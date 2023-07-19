@@ -87,6 +87,22 @@ class TratamentoDeImagem:
 
         return img_binarizada
 
+    def redimensionar_imagem(self, img, altura_desejada=600):
+        """
+        Redimensiona a imagem para uma altura desejada, mantendo a proporção original.
+
+        Parâmetro(s):
+            img (np.array): Imagem de entrada.
+            altura_desejada (int): Altura desejada para a imagem redimensionada.
+
+        Retorno:
+            img_redimensionada (np.array): Imagem redimensionada.
+        """
+        ratio = altura_desejada / img.shape[0]
+        dimensoes_img_redimensionada = (int(img.shape[1] * ratio), altura_desejada)
+
+        return cv2.resize(img, dimensoes_img_redimensionada, interpolation=cv2.INTER_AREA)
+
     def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
         """
         Desenha um polígono delimitando a região de interesse na imagem.
@@ -118,3 +134,5 @@ class TratamentoDeImagem:
         img_roi = cv2.bitwise_and(img, img_roi)
 
         return img_roi
+
+# © 2023 CarAI.

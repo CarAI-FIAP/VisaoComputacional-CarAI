@@ -1,4 +1,8 @@
 import cv2
+import math
+
+import matplotlib.pyplot as plt
+
 from CalibracaoCamera import CalibracaoCamera
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
@@ -14,22 +18,19 @@ class IdentificaFaixasDeTransito:
         self.faixas = FaixasDeTransito()
 
     def identificar_faixas(self, img):
-        out_img = np.copy(img)
+        #out_img = np.copy(img)
 
         #img = self.calibracao.corrigir_distorcao(img)
         img_warped = self.transformacao.mudar_perspectiva(img)
-        img_threshold = self.tratamento.binarizar_imagem(img)
+        img_threshold = self.tratamento.binarizar_imagem(img_warped)
         img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
-        img_roi = self.tratamento.desenhar_roi(img_filtrada)
+        #img_roi = self.tratamento.desenhar_roi(img_filtrada)
 
-        cv2.imshow('img_roi', img_roi)
+        pontos, angulo = self.faixas.calcular_resultados_faixas(img_filtrada, 1100)
+        out_img = self.faixas.plotar_resultados(img_warped, pontos, angulo)
 
-        histograma = self.faixas.calcular_histograma_pista(img_roi)
-        pico_esquerda, pico_direita = self.faixas.calcular_picos_do_histograma(histograma)
-        print('peak_left', pico_esquerda)
-        print('pico_direita', pico_direita)
-        cv2.line(out_img, (pico_esquerda, 0), (pico_esquerda, img.shape[0]), (0, 0, 255), 10)
-        cv2.line(out_img, (pico_direita, 0), (pico_direita, img.shape[0]), (0, 0, 255), 10)
+        cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 350))
+        cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
 
         return out_img
 
@@ -41,7 +42,7 @@ class IdentificaFaixasDeTransito:
 
             out_frame = self.identificar_faixas(frame)
 
-            cv2.imshow('Video', out_frame)
+            cv2.imshow('Video', self.tratamento.redimensionar_imagem(out_frame, 350))
 
             if cv2.waitKey(1) == ord('q'):
                 break
@@ -49,9 +50,17 @@ class IdentificaFaixasDeTransito:
         cap.release()
         cv2.destroyAllWindows()
 
+class IdentificaSinalizacoes:
+    # Classe para identificar e classificar sinais de trânsito e semáforos
+
+    def __init__(self):
+        pass
+
 def main():
     identificaFaixas = IdentificaFaixasDeTransito()
-    identificaFaixas.processar_video('assets/videos_teste/challenge_teatro.mp4')
+    identificaFaixas.processar_video('assets/videos_teste/pista.mp4')
 
 if __name__ == "__main__":
     main()
+
+# © 2023 CarAI.

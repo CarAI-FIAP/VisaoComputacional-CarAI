@@ -1,21 +1,64 @@
 import cv2
 import numpy as np
 from spicy import signal
+import math
 
 class FaixasDeTransito:
     # Classe para identificar as faixas de trânsito.
 
     def __init__(self):
+
         pass
 
-    def calcular_histograma_pista(self, img, altura_min=450, altura_max=720):
+    def plotar_resultados(self, img, pontos, angulo):
+        out_img = np.copy(img)
+
+        for i, ponto in enumerate(pontos):
+            if i == 1:
+                cor = (255, 0, 0)
+            elif i == 2:
+                cor = (0, 0, 255)
+            else:
+                cor = (0, 255, 0)
+
+            cv2.circle(out_img, ponto, 10, cor, -1)
+
+        print("Ângulo ABP:", angulo)
+
+        return out_img
+
+    def calcular_resultados_faixas(self, img, coordenada_min_y):
+        y_faixas = coordenada_min_y
+        y90 = coordenada_min_y + 100
+
+        histograma = self.calcular_histograma_pista(img, y_faixas, y_faixas + 10)
+        x_esquerda, x_direita = self.calcular_picos_do_histograma(histograma)
+
+        histograma_ponto_B = self.calcular_histograma_pista(img, y90, y90 + 10)
+        x_esquerda_B, _ = self.calcular_picos_do_histograma(histograma_ponto_B)
+
+        ponto_A = (int(x_esquerda), int(y_faixas))
+        ponto_B = (int(x_esquerda_B), int(y90))
+        ponto_90 = (int(x_esquerda), int(y90))
+        ponto_direita = (int(x_direita), int(y_faixas))
+
+        AP = math.sqrt((ponto_90[0] - ponto_A[0])**2 + (ponto_90[1] - ponto_A[1])**2)
+        BP = math.sqrt((ponto_90[0] - ponto_B[0])**2 + (ponto_90[1] - ponto_B[1])**2)
+
+        angulo_ABP = math.degrees(math.atan(AP / BP))
+
+        #angulo_BAP = math.degrees(math.atan(BP / AP))
+
+        return [ponto_A, ponto_B, ponto_90, ponto_direita], angulo_ABP
+
+    def calcular_histograma_pista(self, img, altura_min, altura_max):
         """
         Calcula o histograma das projeções verticais da imagem em uma faixa de altura específica.
 
         Parâmetro(s):
             img (np.array): Imagem de entrada.
-            altura_min (int): Altura mínima da faixa de interesse para calcular o histograma (padrão: 0).
-            altura_max (int): Altura máxima da faixa de interesse para calcular o histograma (padrão: 720).
+            altura_min (int): Altura mínima da faixa de interesse para calcular o histograma.
+            altura_max (int): Altura máxima da faixa de interesse para calcular o histograma.
 
         Retorno(s):
             histograma (np.array): Histograma das projeções verticais da imagem.
@@ -49,3 +92,5 @@ class FaixasDeTransito:
             pico_direita = np.argmax(histograma[ponto_medio:]) + ponto_medio
 
         return pico_esquerda, pico_direita
+
+# © 2023 CarAI.

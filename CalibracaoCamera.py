@@ -61,3 +61,5 @@ class CalibracaoCamera():
         """
 
         return cv2.undistort(img, self.mtx, self.dist, None, self.mtx)
+
+# © 2023 CarAI.

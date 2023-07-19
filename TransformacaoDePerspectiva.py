@@ -79,3 +79,5 @@ class TransformacaoDePerspectiva:
         img_dimensoes = (img.shape[0], img.shape[1])
 
         return cv2.warpPerspective(img, M_inv, img_dimensoes, flags=cv2.INTER_LINEAR)
+
+# © 2023 CarAI.
