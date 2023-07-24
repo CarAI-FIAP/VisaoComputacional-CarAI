@@ -1,46 +1,26 @@
 import cv2
 import math
-
 import matplotlib.pyplot as plt
 
-from CalibracaoCamera import CalibracaoCamera
 from TratamentoDeImagem import *
-from TransformacaoDePerspectiva import *
 from FaixasDeTransito import *
+from SinaisDeTransito import *
 
-class IdentificaFaixasDeTransito:
-    # Classe para identificar as faixas da pista
+class VisaoComputacional:
+    # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
-        self.calibracao = CalibracaoCamera('camera_cal', 9, 6)
         self.tratamento = TratamentoDeImagem()
-        self.transformacao = TransformacaoDePerspectiva()
         self.faixas = FaixasDeTransito()
+        self.sinalizacao = SinaisDeTransito() # Comentar p/ diminuir a demora na inicialização
 
-    def identificar_faixas(self, img):
-        #out_img = np.copy(img)
-
-        #img = self.calibracao.corrigir_distorcao(img)
-        img_warped = self.transformacao.mudar_perspectiva(img)
-        img_threshold = self.tratamento.binarizar_imagem(img_warped)
-        img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
-        #img_roi = self.tratamento.desenhar_roi(img_filtrada)
-
-        pontos, angulo = self.faixas.calcular_resultados_faixas(img_filtrada, 1100)
-        out_img = self.faixas.plotar_resultados(img_warped, pontos, angulo)
-
-        cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 350))
-        cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
-
-        return out_img
-
-    def processar_video(self, input_path):
-        cap = cv2.VideoCapture(input_path)
+    def processar_video(self, caminho_video, funcao):
+        cap = cv2.VideoCapture(caminho_video)
 
         while cap.isOpened():
             _, frame = cap.read()
 
-            out_frame = self.identificar_faixas(frame)
+            out_frame = funcao(frame)
 
             cv2.imshow('Video', self.tratamento.redimensionar_imagem(out_frame, 350))
 
@@ -50,17 +30,20 @@ class IdentificaFaixasDeTransito:
         cap.release()
         cv2.destroyAllWindows()
 
-class IdentificaSinalizacoes:
-    # Classe para identificar e classificar sinais de trânsito e semáforos
+    def processar_video_faixas(self, video):
+        self.processar_video(video, self.faixas.identificar_faixas)
 
-    def __init__(self):
-        pass
+    def processar_video_sinalizacoes(self, video):
+        self.processar_video(video, self.sinalizacao.classificar_objetos)
 
 def main():
-    identificaFaixas = IdentificaFaixasDeTransito()
-    identificaFaixas.processar_video('assets/videos_teste/pista.mp4')
+    video_faixas = 'assets/videos_teste/pista.mp4'
+    video_objetos = 'assets/videos_teste/semaforo.mp4'
 
-if __name__ == "__main__":
+    visaoComputacional = VisaoComputacional()
+    visaoComputacional.processar_video_faixas(video_faixas)
+
+if __name__ == '__main__':
     main()
 
 # © 2023 CarAI.

@@ -1,14 +1,37 @@
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 from spicy import signal
 import math
 
+from CalibracaoCamera import CalibracaoCamera
+from TratamentoDeImagem import *
+from TransformacaoDePerspectiva import *
+
 class FaixasDeTransito:
-    # Classe para identificar as faixas de trânsito.
+    # Classe para classificar as faixas de trânsito.
 
     def __init__(self):
+        #self.calibracao = CalibracaoCamera('camera_cal', 9, 6)
+        self.tratamento = TratamentoDeImagem()
+        self.transformacao = TransformacaoDePerspectiva()
 
-        pass
+    def identificar_faixas(self, img):
+        #out_img = np.copy(img)
+
+        #img = self.calibracao.corrigir_distorcao(img)
+        img_warped = self.transformacao.mudar_perspectiva(img)
+        img_threshold = self.tratamento.binarizar_imagem(img_warped)
+        img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
+        #img_roi = self.tratamento.desenhar_roi(img_filtrada)
+
+        pontos, angulo = self.calcular_resultados_faixas(img_filtrada, 1100)
+        out_img = self.plotar_resultados(img_warped, pontos, angulo)
+
+        cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 350))
+        cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
+
+        return out_img
 
     def plotar_resultados(self, img, pontos, angulo):
         out_img = np.copy(img)
@@ -23,7 +46,7 @@ class FaixasDeTransito:
 
             cv2.circle(out_img, ponto, 10, cor, -1)
 
-        print("Ângulo ABP:", angulo)
+        print('Ângulo ABP:', angulo)
 
         return out_img
 
@@ -64,6 +87,10 @@ class FaixasDeTransito:
             histograma (np.array): Histograma das projeções verticais da imagem.
         """
         histograma = np.sum(img[int(altura_min):int(altura_max), :], axis=0)
+
+        #plt.plot(histograma)
+        #plt.title('Histograma')
+        #plt.show()
 
         return histograma
 
