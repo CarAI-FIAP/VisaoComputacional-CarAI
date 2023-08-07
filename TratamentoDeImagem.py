@@ -103,36 +103,4 @@ class TratamentoDeImagem:
 
         return cv2.resize(img, dimensoes_img_redimensionada, interpolation=cv2.INTER_AREA)
 
-    def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
-        """
-        Desenha um polígono delimitando a região de interesse na imagem.
-
-        Parâmetro(s):
-            img (np.array): Imagem de entrada.
-            cor_linha (r, g, b): Cor do polígono da região de interesse.
-            tam_linha (int): Espessura da linha do polígono.
-
-        Retorno(s):
-            img_roi (np.array): Imagem com polígono da região de interesse desenhado.
-        """
-        img_altura = img.shape[0]
-        img_largura = img.shape[1]
-
-        xfd = 120
-        yf = 450
-        offset_x = 120
-
-        centro_x = img_largura // 2
-
-        pontos_roi = np.array([(offset_x, img_altura),                 # top-left
-                               (centro_x - xfd, yf),                   # bottom-left
-                               (centro_x + xfd, yf),                   # bottom-right
-                               (img_largura - offset_x, img_altura)])  # top-right
-
-        img_roi = np.zeros_like(img)
-        cv2.fillPoly(img_roi, [pontos_roi], (255, 0, 0))
-        img_roi = cv2.bitwise_and(img, img_roi)
-
-        return img_roi
-
 # © 2023 CarAI.

@@ -23,12 +23,17 @@ class FaixasDeTransito:
         img_warped = self.transformacao.mudar_perspectiva(img)
         img_threshold = self.tratamento.binarizar_imagem(img_warped)
         img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
-        #img_roi = self.tratamento.desenhar_roi(img_filtrada)
+        img_roi = self.transformacao.desenhar_roi(img)
 
-        pontos, angulo = self.calcular_resultados_faixas(img_filtrada, 1100)
+        # Alterar coordenada_min_y de acordo com a altura da img_filtrada
+        pontos, angulo = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - 150)
         out_img = self.plotar_resultados(img_warped, pontos, angulo)
 
         cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 350))
+        #plt.imshow(img_filtrada)
+        #plt.show()
+
+        cv2.imshow('img_roi', self.tratamento.redimensionar_imagem(img_roi, 350))
         cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
 
         return out_img
@@ -36,17 +41,25 @@ class FaixasDeTransito:
     def plotar_resultados(self, img, pontos, angulo):
         out_img = np.copy(img)
 
-        for i, ponto in enumerate(pontos):
-            if i == 1:
-                cor = (255, 0, 0)
-            elif i == 2:
-                cor = (0, 0, 255)
-            else:
-                cor = (0, 255, 0)
+        altura_img, largura_img = out_img.shape[:2]
+        cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), 10)
 
-            cv2.circle(out_img, ponto, 10, cor, -1)
+        for i, pontos_triangulo in enumerate(pontos):
+            for j, ponto in enumerate(pontos_triangulo):
+                if j == 1:
+                    cor = (255, 0, 0)
+                elif j == 2:
+                    cor = (0, 0, 255)
+                else:
+                    cor = (0, 255, 0)
 
-        print('Ângulo ABP:', angulo)
+                cv2.circle(out_img, ponto, 10, cor, -1)
+
+        if angulo == 0:
+            print('Não foi possível calcular o ângulo! Ajuste os parâmetros para identificar as faixas')
+        else:
+            print('Ângulo ABP:', angulo)
+            print('')
 
         return out_img
 
@@ -57,22 +70,48 @@ class FaixasDeTransito:
         histograma = self.calcular_histograma_pista(img, y_faixas, y_faixas + 10)
         x_esquerda, x_direita = self.calcular_picos_do_histograma(histograma)
 
+        print('Esquerda (x):', x_esquerda)
+        print('Direita (x):', x_direita)
+
         histograma_ponto_B = self.calcular_histograma_pista(img, y90, y90 + 10)
-        x_esquerda_B, _ = self.calcular_picos_do_histograma(histograma_ponto_B)
+        x_esquerda_B, x_direita_B = self.calcular_picos_do_histograma(histograma_ponto_B)
 
-        ponto_A = (int(x_esquerda), int(y_faixas))
-        ponto_B = (int(x_esquerda_B), int(y90))
-        ponto_90 = (int(x_esquerda), int(y90))
-        ponto_direita = (int(x_direita), int(y_faixas))
+        pontos = []
 
-        AP = math.sqrt((ponto_90[0] - ponto_A[0])**2 + (ponto_90[1] - ponto_A[1])**2)
-        BP = math.sqrt((ponto_90[0] - ponto_B[0])**2 + (ponto_90[1] - ponto_B[1])**2)
+        if x_esquerda != 0 or x_esquerda_B != 0:
+            pontos_triangulo_esquerda = [(int(x_esquerda), int(y_faixas)), (int(x_esquerda_B), int(y90)), (int(x_esquerda), int(y90))]
+            pontos.append(pontos_triangulo_esquerda)
+        else:
+            print('Curva à esquerda')
 
-        angulo_ABP = math.degrees(math.atan(AP / BP))
+        if x_direita != 0 or x_direita_B != 0:
+            pontos_triangulo_direita = [(int(x_direita), int(y_faixas)), (int(x_direita_B), int(y90)), (int(x_direita), int(y90))]
+            pontos.append(pontos_triangulo_direita)
+        else:
+            print('Curva à direita')
 
-        #angulo_BAP = math.degrees(math.atan(BP / AP))
+        angulos = []
 
-        return [ponto_A, ponto_B, ponto_90, ponto_direita], angulo_ABP
+        # Verificar se existem pontos identificados
+        if pontos:
+            for pontos_triangulo in pontos:
+                ponto_A, ponto_B, ponto_90 = pontos_triangulo
+
+                AP = math.sqrt((ponto_90[0] - ponto_A[0]) ** 2 + (ponto_90[1] - ponto_A[1]) ** 2)
+                BP = math.sqrt((ponto_90[0] - ponto_B[0]) ** 2 + (ponto_90[1] - ponto_B[1]) ** 2)
+
+                try:
+                    #angulo_ABP = math.degrees(math.atan(AP / BP))
+                    angulo_BAP = math.degrees(math.atan(BP / AP))
+
+                except ZeroDivisionError:
+                    angulo_BAP = 0
+
+                angulos.append(angulo_BAP)
+        else:
+            print('Nenhuma faixa foi encontrada. Ajuste os parâmetros para identificá-las!')
+
+        return pontos, angulos
 
     def calcular_histograma_pista(self, img, altura_min, altura_max):
         """
@@ -88,9 +127,9 @@ class FaixasDeTransito:
         """
         histograma = np.sum(img[int(altura_min):int(altura_max), :], axis=0)
 
-        #plt.plot(histograma)
-        #plt.title('Histograma')
-        #plt.show()
+        plt.plot(histograma)
+        plt.title('Histograma')
+        plt.show()
 
         return histograma
 
@@ -105,9 +144,11 @@ class FaixasDeTransito:
             pico_esquerda (int): Pico do lado esquerdo do histograma.
             pico_direita (int): Pico do lado direito do histograma.
         """
-        picos = signal.find_peaks_cwt(histograma, np.arange(1, 150), min_length=150)
+        picos = signal.find_peaks_cwt(histograma, np.arange(1, 200), min_length=200)
 
         ponto_medio = int(histograma.shape[0] / 2)
+
+        print('Qtd de picos:', len(picos))
 
         if len(picos) > 1:
             # Caso mais de dois picos sejam encontrados, selecionamos apenas o mais à esquerda e o mais à direita
