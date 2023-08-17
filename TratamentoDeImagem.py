@@ -71,15 +71,21 @@ class TratamentoDeImagem:
         # Converte a imagem de RGB para o espaço de cores HLS e HSV e separa as imagens para cada canal.
         hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
         hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
         canal_h = hls[:,:,0]
         canal_l = hls[:,:,1]
         canal_s = hls[:,:,2]
         canal_v = hsv[:,:,2]
+        canal_r = bgr[:,:,2]
 
         faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0)
+        #faixa_direita &= self.threshold_absoluto(canal_s, 30, 255)
+        #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
         #faixa_direita[:,:750] = 0
 
         faixa_esquerda = self.threshold_absoluto(canal_h, 20, 30)
+        #faixa_esquerda &= self.threshold_absoluto(canal_s, 30, 255)
         faixa_esquerda &= self.threshold_relativo(canal_v, 0.85, 1.0)
         #faixa_esquerda[:,550:] = 0
 
@@ -102,5 +108,11 @@ class TratamentoDeImagem:
         dimensoes_img_redimensionada = (int(img.shape[1] * ratio), altura_desejada)
 
         return cv2.resize(img, dimensoes_img_redimensionada, interpolation=cv2.INTER_AREA)
+
+    def redimensionar_por_fator(self, img, fator):
+        largura = int(img.shape[1] / fator)
+        altura = int(img.shape[0] / fator)
+
+        return cv2.resize(img, (largura, altura))
 
 # © 2023 CarAI.

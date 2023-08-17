@@ -3,10 +3,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from spicy import signal
 import math
+import serial
+import time
 
 from CalibracaoCamera import CalibracaoCamera
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
+
+port = 'COM6'
+rate = 115200
+serial_arduino = serial.Serial(port, rate)
+
+time.sleep(0.1)
 
 class FaixasDeTransito:
     # Classe para classificar as faixas de trânsito.
@@ -16,52 +24,72 @@ class FaixasDeTransito:
         self.tratamento = TratamentoDeImagem()
         self.transformacao = TransformacaoDePerspectiva()
 
-    def identificar_faixas(self, img):
-        #out_img = np.copy(img)
+    def fechar_conexao(self):
+        serial_arduino.close()
+
+    def enviar_dados_para_arduino(self, dados):
+        angulo, esquerda_x, direita_x, offset = dados
+        dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset}\n'
+
+        print(dados_enviar)
+
+        serial_arduino.write(dados_enviar.encode())
+        time.sleep(0.1)
+
+    def identificar_faixas(self, img, debug=True):
+        fator_reducao = 5
 
         #img = self.calibracao.corrigir_distorcao(img)
+        img_reduzida = self.tratamento.redimensionar_por_fator(img, fator_reducao)
         img_warped = self.transformacao.mudar_perspectiva(img)
         img_threshold = self.tratamento.binarizar_imagem(img_warped)
         img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
         img_roi = self.transformacao.desenhar_roi(img)
 
         # Alterar coordenada_min_y de acordo com a altura da img_filtrada
-        pontos, angulo = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - 150)
-        out_img = self.plotar_resultados(img_warped, pontos, angulo)
+        pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (250 / fator_reducao))
 
-        cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 350))
-        #plt.imshow(img_filtrada)
-        #plt.show()
+        angulo = int(np.nanmin(angulos))
 
-        cv2.imshow('img_roi', self.tratamento.redimensionar_imagem(img_roi, 350))
-        cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
+        offset = int(self.calcular_offset(img, [coord_faixas[0], coord_faixas[1]]))
 
-        return out_img
+        dados = (angulo, coord_faixas[0], coord_faixas[1], offset)
+        self.enviar_dados_para_arduino(dados)
 
-    def plotar_resultados(self, img, pontos, angulo):
-        out_img = np.copy(img)
+        if debug:
+            out_img = np.copy(img_warped)
 
-        altura_img, largura_img = out_img.shape[:2]
-        cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), 10)
-
-        for i, pontos_triangulo in enumerate(pontos):
-            for j, ponto in enumerate(pontos_triangulo):
-                if j == 1:
-                    cor = (255, 0, 0)
-                elif j == 2:
-                    cor = (0, 0, 255)
-                else:
-                    cor = (0, 255, 0)
-
-                cv2.circle(out_img, ponto, 10, cor, -1)
-
-        if angulo == 0:
-            print('Não foi possível calcular o ângulo! Ajuste os parâmetros para identificar as faixas')
-        else:
+            print('\nOffset: ', offset)
+            print('Ângulos: ', angulos)
             print('Ângulo ABP:', angulo)
-            print('')
+            print('Esquerda (x): ', coord_faixas[0])
+            print('Direita (x): ', coord_faixas[1])
 
-        return out_img
+            cv2.imshow('img_filtrada', self.tratamento.redimensionar_por_fator(img_filtrada, 350))
+            #plt.imshow(img_filtrada)
+            #plt.show()
+
+            for i, pontos_triangulo in enumerate(pontos):
+                for j, ponto in enumerate(pontos_triangulo):
+                    if j == 1:
+                        cor = (255, 0, 0)
+                    elif j == 2:
+                        cor = (0, 0, 255)
+                    else:
+                        cor = (0, 255, 0)
+
+                    cv2.circle(out_img, ponto, 10, cor, -1)
+
+            altura_img, largura_img = out_img.shape[:2]
+            cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), 10)
+
+            cv2.imshow('img_roi', self.tratamento.redimensionar_imagem(img_roi, 350))
+            cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 350))
+            cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
+
+        else:
+            cv2.destroyAllWindows()
+        #return dados
 
     def calcular_resultados_faixas(self, img, coordenada_min_y):
         y_faixas = coordenada_min_y
@@ -70,8 +98,7 @@ class FaixasDeTransito:
         histograma = self.calcular_histograma_pista(img, y_faixas, y_faixas + 10)
         x_esquerda, x_direita = self.calcular_picos_do_histograma(histograma)
 
-        print('Esquerda (x):', x_esquerda)
-        print('Direita (x):', x_direita)
+        coord_faixas = [x_esquerda, x_direita]
 
         histograma_ponto_B = self.calcular_histograma_pista(img, y90, y90 + 10)
         x_esquerda_B, x_direita_B = self.calcular_picos_do_histograma(histograma_ponto_B)
@@ -105,13 +132,27 @@ class FaixasDeTransito:
                     angulo_BAP = math.degrees(math.atan(BP / AP))
 
                 except ZeroDivisionError:
-                    angulo_BAP = 0
+                    return
 
                 angulos.append(angulo_BAP)
         else:
             print('Nenhuma faixa foi encontrada. Ajuste os parâmetros para identificá-las!')
 
-        return pontos, angulos
+        return pontos, coord_faixas, angulos
+
+    def calcular_offset(self, img, pontos):
+        posicao_carro = img.shape[1] / 2
+
+        if len(pontos) == 2:
+            centro_pista = (pontos[1] - pontos[0]) / 2 + pontos[0]
+
+            # Offset do centro do carro para o centro da pista (em pixels)
+            offset = (np.abs(posicao_carro) - np.abs(centro_pista))
+
+            return offset
+
+        else:
+            return None
 
     def calcular_histograma_pista(self, img, altura_min, altura_max):
         """
@@ -127,9 +168,9 @@ class FaixasDeTransito:
         """
         histograma = np.sum(img[int(altura_min):int(altura_max), :], axis=0)
 
-        plt.plot(histograma)
-        plt.title('Histograma')
-        plt.show()
+        #plt.plot(histograma)
+        #plt.title('Histograma')
+        #plt.show()
 
         return histograma
 
@@ -144,11 +185,9 @@ class FaixasDeTransito:
             pico_esquerda (int): Pico do lado esquerdo do histograma.
             pico_direita (int): Pico do lado direito do histograma.
         """
-        picos = signal.find_peaks_cwt(histograma, np.arange(1, 200), min_length=200)
+        picos = signal.find_peaks_cwt(histograma, np.arange(1, 100), min_length=150)
 
         ponto_medio = int(histograma.shape[0] / 2)
-
-        print('Qtd de picos:', len(picos))
 
         if len(picos) > 1:
             # Caso mais de dois picos sejam encontrados, selecionamos apenas o mais à esquerda e o mais à direita
