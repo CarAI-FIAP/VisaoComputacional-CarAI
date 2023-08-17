@@ -10,19 +10,25 @@ from CalibracaoCamera import CalibracaoCamera
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
 
+comunicacao_arduino = False
+
 port = 'COM6'
 rate = 115200
-serial_arduino = serial.Serial(port, rate)
 
-time.sleep(0.1)
+if comunicacao_arduino:
+    serial_arduino = serial.Serial(port, rate)
+    time.sleep(0.1)
 
 class FaixasDeTransito:
     # Classe para classificar as faixas de trânsito.
 
-    def __init__(self):
+    def __init__(self, fator_reducao):
+        self.fator_reducao = fator_reducao
+        self.birds_view = False
+
         #self.calibracao = CalibracaoCamera('camera_cal', 9, 6)
         self.tratamento = TratamentoDeImagem()
-        self.transformacao = TransformacaoDePerspectiva()
+        self.transformacao = TransformacaoDePerspectiva(fator_reducao)
 
     def fechar_conexao(self):
         serial_arduino.close()
@@ -31,43 +37,52 @@ class FaixasDeTransito:
         angulo, esquerda_x, direita_x, offset = dados
         dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset}\n'
 
-        print(dados_enviar)
+        #print(dados_enviar)
 
         serial_arduino.write(dados_enviar.encode())
         time.sleep(0.1)
 
     def identificar_faixas(self, img, debug=True):
-        fator_reducao = 5
-
         #img = self.calibracao.corrigir_distorcao(img)
-        img_reduzida = self.tratamento.redimensionar_por_fator(img, fator_reducao)
-        img_warped = self.transformacao.mudar_perspectiva(img)
-        img_threshold = self.tratamento.binarizar_imagem(img_warped)
+
+        if self.birds_view:
+            img = self.transformacao.mudar_perspectiva(img)
+            img_threshold = self.tratamento.binarizar_imagem(img)
+        else:
+            img_threshold = self.tratamento.binarizar_imagem(img)
+
         img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
-        img_roi = self.transformacao.desenhar_roi(img)
+
+        if not(self.birds_view):
+            img_roi = self.transformacao.desenhar_roi(img_filtrada)
+        else:
+            img_roi = self.transformacao.desenhar_roi(img)
 
         # Alterar coordenada_min_y de acordo com a altura da img_filtrada
-        pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (250 / fator_reducao))
+        if self.birds_view:
+            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (250 // self.fator_reducao))
+        else:
+            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_roi, img_roi.shape[0] - (250 // self.fator_reducao))
 
         angulo = int(np.nanmin(angulos))
 
         offset = int(self.calcular_offset(img, [coord_faixas[0], coord_faixas[1]]))
 
         dados = (angulo, coord_faixas[0], coord_faixas[1], offset)
-        self.enviar_dados_para_arduino(dados)
+
+        if comunicacao_arduino:
+            self.enviar_dados_para_arduino(dados)
+        else:
+            print(dados)
 
         if debug:
-            out_img = np.copy(img_warped)
+            out_img = np.copy(img)
 
             print('\nOffset: ', offset)
             print('Ângulos: ', angulos)
             print('Ângulo ABP:', angulo)
             print('Esquerda (x): ', coord_faixas[0])
             print('Direita (x): ', coord_faixas[1])
-
-            cv2.imshow('img_filtrada', self.tratamento.redimensionar_por_fator(img_filtrada, 350))
-            #plt.imshow(img_filtrada)
-            #plt.show()
 
             for i, pontos_triangulo in enumerate(pontos):
                 for j, ponto in enumerate(pontos_triangulo):
@@ -78,18 +93,27 @@ class FaixasDeTransito:
                     else:
                         cor = (0, 255, 0)
 
-                    cv2.circle(out_img, ponto, 10, cor, -1)
+                    tamanho_ponto = 10 // self.fator_reducao
+                    cv2.circle(out_img, ponto, tamanho_ponto, cor, -1)
 
             altura_img, largura_img = out_img.shape[:2]
-            cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), 10)
+            espessura_linha = 10 // self.fator_reducao
+            cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), espessura_linha)
 
-            cv2.imshow('img_roi', self.tratamento.redimensionar_imagem(img_roi, 350))
-            cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 350))
-            cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
+            if self.fator_reducao > 2:
+                cv2.imshow('img', img)
+                cv2.imshow('img_filtrada', img_filtrada)
+                cv2.imshow('out_img', out_img)
+                cv2.imshow('img_roi', img_roi)
+
+            else:
+                cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 350))
+                cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 350))
+                cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 350))
+                cv2.imshow('img_roi', self.tratamento.redimensionar_imagem(img_roi, 350))
 
         else:
             cv2.destroyAllWindows()
-        #return dados
 
     def calcular_resultados_faixas(self, img, coordenada_min_y):
         y_faixas = coordenada_min_y
@@ -119,6 +143,8 @@ class FaixasDeTransito:
 
         angulos = []
 
+        angulo_padrao = 40
+
         # Verificar se existem pontos identificados
         if pontos:
             for pontos_triangulo in pontos:
@@ -129,7 +155,11 @@ class FaixasDeTransito:
 
                 try:
                     #angulo_ABP = math.degrees(math.atan(AP / BP))
+
                     angulo_BAP = math.degrees(math.atan(BP / AP))
+
+                    if not(self.birds_view):
+                        angulo_BAP -= angulo_padrao
 
                 except ZeroDivisionError:
                     return

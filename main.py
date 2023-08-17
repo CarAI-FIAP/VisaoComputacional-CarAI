@@ -10,21 +10,25 @@ class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
+        self.fator_reducao = 1
+
         self.tratamento = TratamentoDeImagem()
-        self.faixas = FaixasDeTransito()
+        self.faixas = FaixasDeTransito(self.fator_reducao)
         #self.sinalizacao = SinaisDeTransito() # Comentar p/ diminuir a demora na inicialização
 
     def processar_video(self, caminho_video, funcao):
         cap = cv2.VideoCapture(caminho_video)
-        fator_reducao = 5
+
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
         while cap.isOpened():
             _, frame = cap.read()
+            frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
+
+            funcao(frame_reduzido)
 
             #out_frame = funcao(frame)
-
-            funcao(frame)
-
             #cv2.imshow('Video', self.tratamento.redimensionar_imagem(out_frame, 350))
 
             if cv2.waitKey(10) == ord('q'):
@@ -40,13 +44,15 @@ class VisaoComputacional:
         self.processar_video(video, self.sinalizacao.classificar_objetos)
 
 def main():
-    video_faixas = 'assets/videos_teste/pista.mp4'
+    video_faixas = 'assets/videos_teste/pista_pos2.mp4'
+    #video_faixas = 'assets/videos_teste/pista.mp4'
+
     #video_objetos = 'assets/videos_teste/placa.mp4'
 
     #camera_celular = 'https://172.16.53.23:8080/video'
 
     visaoComputacional = VisaoComputacional()
-    visaoComputacional.processar_video_faixas(video_faixas)
+    visaoComputacional.processar_video_faixas(1)
     #visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
 if __name__ == '__main__':

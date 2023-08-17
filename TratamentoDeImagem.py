@@ -93,7 +93,7 @@ class TratamentoDeImagem:
 
         return img_binarizada
 
-    def redimensionar_imagem(self, img, altura_desejada=600):
+    def redimensionar_imagem(self, img, altura_desejada):
         """
         Redimensiona a imagem para uma altura desejada, mantendo a proporção original.
 

@@ -4,10 +4,10 @@ import numpy as np
 class TransformacaoDePerspectiva:
     # Classe para realizar transformações de perspectiva na imagem.
 
-    def __init__(self):
+    def __init__(self, fator_reducao=1):
         # Definição dos valores fixos para os deslocamentos e coordenadas dos pontos de origem
-        self.xfd = 162        # Deslocamento horizontal em relação ao centro da imagem
-        self.yf = 450        # Posição vertical dos pontos de origem
+        self.xfd = (162 // fator_reducao)        # Deslocamento horizontal em relação ao centro da imagem
+        self.yf = (450 // fator_reducao)        # Posição vertical dos pontos de origem
         self.offset_x = 0  # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
 
     def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
