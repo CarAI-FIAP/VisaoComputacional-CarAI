@@ -40,6 +40,9 @@ class FaixasDeTransito:
         serial_arduino.write(dados_enviar.encode())
         time.sleep(0.1)
 
+        dados_recebidos = serial_arduino.readline().decode('utf-8').strip()
+        print(f'Dados recebidos pelo Arduino: {dados_recebidos}')
+
     def identificar_faixas(self, img, debug=True):
         img_copia = np.copy(img)
         #img = self.calibracao.corrigir_distorcao(img)
@@ -63,9 +66,15 @@ class FaixasDeTransito:
         else:
             pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (150 // self.fator_reducao))
 
-        angulo = int(np.nanmin(angulos))
+        if len(angulos) > 1 and (abs(abs(angulos[0]) - abs(angulos[1])) > 10):
+            angulo = int(np.nanmax(angulos))
+        else:
+            angulo = int(np.nanmin(angulos))
 
-        offset = int(self.calcular_offset(img, [coord_faixas[0], coord_faixas[1]]))
+        if coord_faixas[0] and coord_faixas[1]:
+            offset = int(self.calcular_offset(img, [coord_faixas[0], coord_faixas[1]]))
+        else:
+            offset = None
 
         dados = (angulo, coord_faixas[0], coord_faixas[1], offset)
 
@@ -99,17 +108,22 @@ class FaixasDeTransito:
             espessura_linha = 16 // self.fator_reducao
             cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), espessura_linha)
 
-            if self.fator_reducao > 2:
+            img_resultados = self.tratamento.juntar_videos([img_filtrada, out_img])
+
+            if self.fator_reducao > 4:
                 #cv2.imshow('img', img)
-                cv2.imshow('img_filtrada', img_filtrada)
-                cv2.imshow('out_img', out_img)
-                cv2.imshow('img_roi', img_roi)
+                #cv2.imshow('img_filtrada', img_filtrada)
+                #cv2.imshow('out_img', out_img)
+                cv2.imshow('Imagem ROI', img_roi)
+                cv2.imshow('Resultados', img_resultados)
 
             else:
                 #cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 250))
-                cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 250))
-                cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 250))
-                cv2.imshow('img_roi', self.tratamento.redimensionar_imagem(img_roi, 250))
+                #cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 280))
+                #cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 280))
+                cv2.imshow('Imagem ROI', self.tratamento.redimensionar_imagem(img_roi, 280))
+                cv2.imshow('Resultados', self.tratamento.redimensionar_imagem(img_resultados, 280))
+
 
         else:
             cv2.destroyAllWindows()
@@ -142,7 +156,7 @@ class FaixasDeTransito:
 
         angulos = []
 
-        angulo_padrao = 40
+        angulo_padrao = 0
 
         # Verificar se existem pontos identificados
         if pontos:

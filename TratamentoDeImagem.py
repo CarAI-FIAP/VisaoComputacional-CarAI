@@ -4,27 +4,20 @@ class TratamentoDeImagem:
     # Classe para reunir todos os métodos de tratamento de imagem.
 
     def __init__(self):
-        self.nome_trackbar = 'Visao Computacional | Threshold'
-        self.threshold_canny_1 = 200
-        self.threshold_canny_2 = 50
+        self.nome_trackbar = 'Visao Computacional - Threshold'
         self.thresh = 115
 
-        self.nome_threshold_canny_1 = 'Canny 1'
-        self.nome_threshold_canny_2 = 'Canny 2'
         self.nome_thresh = 'Thresh'
 
         #self.criar_trackbar()
 
     def criar_trackbar(self):
         cv2.namedWindow(self.nome_trackbar)
-        cv2.createTrackbar(self.nome_threshold_canny_1, self.nome_trackbar, self.threshold_canny_1, 500, self.atualizar_posicao_trackbar)
-        cv2.createTrackbar(self.nome_threshold_canny_2, self.nome_trackbar, self.threshold_canny_2, 500, self.atualizar_posicao_trackbar)
         cv2.createTrackbar(self.nome_thresh, self.nome_trackbar, self.thresh, 255, self.atualizar_posicao_trackbar)
 
     def atualizar_posicao_trackbar(self, x):
-        self.threshold_canny_1 = cv2.getTrackbarPos(self.nome_threshold_canny_1, self.nome_trackbar)
-        self.threshold_canny_2 = cv2.getTrackbarPos(self.nome_threshold_canny_2, self.nome_trackbar)
-        self.thresh = cv2.getTrackbarPos(self.nome_thresh, self.nome_trackbar)
+        cv2.getTrackbarPos(self.nome_thresh, self.nome_trackbar)
+        print(self.thresh)
 
     def aplicar_filtros(self, img):
         """
