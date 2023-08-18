@@ -10,7 +10,7 @@ class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
-        self.fator_reducao = 1
+        self.fator_reducao = 2
 
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito(self.fator_reducao)
@@ -44,7 +44,7 @@ class VisaoComputacional:
         self.processar_video(video, self.sinalizacao.classificar_objetos)
 
 def main():
-    video_faixas = 'assets/videos_teste/pista_pos2.mp4'
+    video_faixas = 'assets/videos_teste/pista.mp4'
     #video_faixas = 'assets/videos_teste/pista.mp4'
 
     #video_objetos = 'assets/videos_teste/placa.mp4'
@@ -52,7 +52,7 @@ def main():
     #camera_celular = 'https://172.16.53.23:8080/video'
 
     visaoComputacional = VisaoComputacional()
-    visaoComputacional.processar_video_faixas(1)
+    visaoComputacional.processar_video_faixas(video_faixas)
     #visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
 if __name__ == '__main__':

@@ -1,11 +1,30 @@
 import cv2
 import numpy as np
-
 class TratamentoDeImagem:
     # Classe para reunir todos os métodos de tratamento de imagem.
 
     def __init__(self):
-        pass
+        self.nome_trackbar = 'Visao Computacional | Threshold'
+        self.threshold_canny_1 = 200
+        self.threshold_canny_2 = 50
+        self.thresh = 115
+
+        self.nome_threshold_canny_1 = 'Canny 1'
+        self.nome_threshold_canny_2 = 'Canny 2'
+        self.nome_thresh = 'Thresh'
+
+        #self.criar_trackbar()
+
+    def criar_trackbar(self):
+        cv2.namedWindow(self.nome_trackbar)
+        cv2.createTrackbar(self.nome_threshold_canny_1, self.nome_trackbar, self.threshold_canny_1, 500, self.atualizar_posicao_trackbar)
+        cv2.createTrackbar(self.nome_threshold_canny_2, self.nome_trackbar, self.threshold_canny_2, 500, self.atualizar_posicao_trackbar)
+        cv2.createTrackbar(self.nome_thresh, self.nome_trackbar, self.thresh, 255, self.atualizar_posicao_trackbar)
+
+    def atualizar_posicao_trackbar(self, x):
+        self.threshold_canny_1 = cv2.getTrackbarPos(self.nome_threshold_canny_1, self.nome_trackbar)
+        self.threshold_canny_2 = cv2.getTrackbarPos(self.nome_threshold_canny_2, self.nome_trackbar)
+        self.thresh = cv2.getTrackbarPos(self.nome_thresh, self.nome_trackbar)
 
     def aplicar_filtros(self, img):
         """
@@ -23,6 +42,13 @@ class TratamentoDeImagem:
         img_dilatacao = cv2.dilate(img_abertura, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
 
         return img_dilatacao
+
+    def juntar_videos(self, imgs):
+        for i in range(0, len(imgs)):
+            if len(imgs[i].shape) == 2:
+                imgs[i] = cv2.cvtColor(imgs[i], cv2.COLOR_GRAY2BGR)
+
+        return np.hstack(imgs)
 
     def threshold_relativo(self, img, limite_inf, limite_sup):
         """
@@ -79,7 +105,7 @@ class TratamentoDeImagem:
         canal_v = hsv[:,:,2]
         canal_r = bgr[:,:,2]
 
-        faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0)
+        faixa_direita = self.threshold_relativo(canal_l, 0.9, 1.0)
         #faixa_direita &= self.threshold_absoluto(canal_s, 30, 255)
         #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
         #faixa_direita[:,:750] = 0
@@ -114,5 +140,11 @@ class TratamentoDeImagem:
         altura = int(img.shape[0] / fator)
 
         return cv2.resize(img, (largura, altura))
+
+    def aplicar_threshold(self, img, threshold_tipo=cv2.THRESH_BINARY_INV):
+        img_cinza = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img_blur = cv2.GaussianBlur(img_cinza, (5, 5), 1)
+
+        return cv2.threshold(img_blur, self.thresh, 255, threshold_tipo)[1]
 
 # © 2023 CarAI.

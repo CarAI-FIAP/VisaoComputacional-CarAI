@@ -10,6 +10,8 @@ class TransformacaoDePerspectiva:
         self.yf = (450 // fator_reducao)        # Posição vertical dos pontos de origem
         self.offset_x = 0  # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
 
+        #self.birds_view = False
+
     def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
         """
         Desenha um polígono delimitando a região de interesse na imagem.
@@ -50,6 +52,9 @@ class TransformacaoDePerspectiva:
 
         # Calcula a posição horizontal do centro da imagem adicionando um deslocamento ajustável
         centro_x = img_largura / 2 + centro_ajustavel_x
+
+        #if not(self.birds_view):
+            #self.xfd = img.shape[1]
 
         src = np.float32([(self.offset_x, img_altura),                      # top-left
                                (centro_x - self.xfd, self.yf),              # bottom-left
