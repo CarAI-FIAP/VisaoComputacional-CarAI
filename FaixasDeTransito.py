@@ -24,7 +24,7 @@ class FaixasDeTransito:
 
     def __init__(self, fator_reducao):
         self.fator_reducao = fator_reducao
-        self.birds_view = True
+        self.birds_view = False
 
         #self.calibracao = CalibracaoCamera('camera_cal', 9, 6)
         self.tratamento = TratamentoDeImagem()
@@ -50,8 +50,8 @@ class FaixasDeTransito:
         if self.birds_view:
             img = self.transformacao.mudar_perspectiva(img)
 
-        #img_threshold = self.tratamento.binarizar_imagem(img)
         img_threshold = self.tratamento.binarizar_imagem(img)
+        #img_threshold = self.tratamento.binarizar_imagem(img)
 
         img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
 
@@ -64,9 +64,11 @@ class FaixasDeTransito:
         if self.birds_view:
             pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (200 // self.fator_reducao))
         else:
-            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (150 // self.fator_reducao))
+            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (200 // self.fator_reducao))
 
-        if len(angulos) > 1 and (abs(abs(angulos[0]) - abs(angulos[1])) > 10):
+        if len(angulos) < 1:
+            angulo = None
+        elif len(angulos) > 1 and (abs(abs(angulos[0]) - abs(angulos[1])) > 10):
             angulo = int(np.nanmax(angulos))
         else:
             angulo = int(np.nanmin(angulos))
@@ -114,14 +116,17 @@ class FaixasDeTransito:
                 #cv2.imshow('img', img)
                 #cv2.imshow('img_filtrada', img_filtrada)
                 #cv2.imshow('out_img', out_img)
-                cv2.imshow('Imagem ROI', img_roi)
+
+                if self.birds_view:
+                    cv2.imshow('Imagem ROI', img_roi)
                 cv2.imshow('Resultados', img_resultados)
 
             else:
                 #cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 250))
                 #cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 280))
                 #cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 280))
-                cv2.imshow('Imagem ROI', self.tratamento.redimensionar_imagem(img_roi, 280))
+                if self.birds_view:
+                    cv2.imshow('Imagem ROI', self.tratamento.redimensionar_imagem(img_roi, 280))
                 cv2.imshow('Resultados', self.tratamento.redimensionar_imagem(img_resultados, 280))
 
 
@@ -145,18 +150,18 @@ class FaixasDeTransito:
         if x_esquerda != 0 or x_esquerda_B != 0:
             pontos_triangulo_esquerda = [(int(x_esquerda), int(y_faixas)), (int(x_esquerda_B), int(y90)), (int(x_esquerda), int(y90))]
             pontos.append(pontos_triangulo_esquerda)
-        #else:
-            #print('Curva à esquerda')
+        else:
+            print('Curva à esquerda')
 
         if x_direita != 0 or x_direita_B != 0:
             pontos_triangulo_direita = [(int(x_direita), int(y_faixas)), (int(x_direita_B), int(y90)), (int(x_direita), int(y90))]
             pontos.append(pontos_triangulo_direita)
-        #else:
-            #print('Curva à direita')
+        else:
+            print('Curva à direita')
 
         angulos = []
 
-        angulo_padrao = 0
+        angulo_padrao = 40
 
         # Verificar se existem pontos identificados
         if pontos:
@@ -173,8 +178,13 @@ class FaixasDeTransito:
 
                     if not(self.birds_view):
                         angulo_BAP -= angulo_padrao
+                        angulo_BAP = abs(angulo_BAP)
 
-                    angulos.append(angulo_BAP)
+                    if angulo_BAP != 0:
+                        if x_esquerda == 0:
+                            angulos.append(-angulo_BAP)
+                        else:
+                            angulos.append(angulo_BAP)
 
                 except ZeroDivisionError:
                     return
@@ -241,6 +251,9 @@ class FaixasDeTransito:
         else:
             pico_esquerda = np.argmax(histograma[:ponto_medio])
             pico_direita = np.argmax(histograma[ponto_medio:]) + ponto_medio
+
+            if pico_direita == ponto_medio:
+                pico_direita = 0
 
         return pico_esquerda, pico_direita
 

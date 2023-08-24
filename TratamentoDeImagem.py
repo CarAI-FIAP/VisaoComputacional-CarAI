@@ -9,7 +9,7 @@ class TratamentoDeImagem:
 
         self.nome_thresh = 'Thresh'
 
-        #self.criar_trackbar()
+        self.criar_trackbar()
 
     def criar_trackbar(self):
         cv2.namedWindow(self.nome_trackbar)
@@ -134,7 +134,7 @@ class TratamentoDeImagem:
 
         return cv2.resize(img, (largura, altura))
 
-    def aplicar_threshold(self, img, threshold_tipo=cv2.THRESH_BINARY_INV):
+    def aplicar_threshold(self, img, threshold_tipo=cv2.THRESH_BINARY + cv2.THRESH_OTSU):
         img_cinza = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img_blur = cv2.GaussianBlur(img_cinza, (5, 5), 1)
 
