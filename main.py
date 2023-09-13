@@ -5,21 +5,24 @@ import matplotlib.pyplot as plt
 from TratamentoDeImagem import *
 from FaixasDeTransito import *
 from SinaisDeTransito import *
+from PainelDeControle import *
 
-print(cv2.__version__)
+#print(cv2.__version__)
 
 class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
-        self.fator_reducao = 4
-        self.camera_on = False
+        self.fator_reducao = 3
+        self.camera_on = True
         self.video_largura = 1280
         self.video_altura = 720
 
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito(self.fator_reducao)
         #self.sinalizacao = SinaisDeTransito() # Comentar p/ diminuir a demora na inicialização
+
+        self.painel_de_controle = PainelDeControle()
 
     def processar_video(self, funcao, caminho_video=''):
         if self.camera_on:
@@ -45,10 +48,14 @@ class VisaoComputacional:
             #cv2.imshow('Video', self.tratamento.redimensionar_imagem(out_frame, 350))
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.faixas.fechar_conexao()
                 break
 
         cap.release()
         cv2.destroyAllWindows()
+
+    def inicializar_painel_de_controle(self):
+        self.painel_de_controle.mainloop()
 
     def processar_video_faixas(self, video=''):
         self.processar_video(self.faixas.identificar_faixas, video)
@@ -58,7 +65,6 @@ class VisaoComputacional:
 
 def main():
     video_faixas = 'assets/videos_teste/pista_completa.mp4'
-
     #video_objetos = 'assets/videos_teste/placa.mp4'
 
     visaoComputacional = VisaoComputacional()
