@@ -4,12 +4,7 @@ class TratamentoDeImagem:
     # Classe para reunir todos os métodos de tratamento de imagem.
 
     def __init__(self):
-        self.nome_trackbar = 'Visao Computacional - Threshold'
         self.thresh = 115
-
-        self.nome_thresh = 'Thresh'
-
-        self.criar_trackbar()
 
     def criar_trackbar(self):
         cv2.namedWindow(self.nome_trackbar)
@@ -98,7 +93,9 @@ class TratamentoDeImagem:
         canal_v = hsv[:,:,2]
         canal_r = bgr[:,:,2]
 
-        faixa_direita = self.threshold_relativo(canal_l, 0.9, 1.0)
+        faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0)
+        #faixa_direita = cv2.threshold(canal_l, (120, 255), cv2.THRESH_BINARY)
+        #faixa_direita = cv2.GaussianBlur(faixa_direita, (3, 3))
         #faixa_direita &= self.threshold_absoluto(canal_s, 30, 255)
         #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
         #faixa_direita[:,:750] = 0
@@ -139,5 +136,24 @@ class TratamentoDeImagem:
         img_blur = cv2.GaussianBlur(img_cinza, (5, 5), 1)
 
         return cv2.threshold(img_blur, self.thresh, 255, threshold_tipo)[1]
+
+    def sobel(self, img, orientacao='x', kernel=3):
+        if orientacao == 'x':
+            sobel = cv2.Sobel(img, cv2.CV_64F, 1, 0, kernel)
+
+        if orientacao == 'y':
+            sobel = cv2.Sobel(img, cv2.CV_64F, 0, 1, kernel)
+
+        return sobel
+
+    def aplicar_threshold_sobel(self, img, kernel, thresh=(0, 255)):
+        sobelx = np.absolute(self.sobel(img, orientacao='x', kernel=kernel))
+
+        # Get the magnitude of the edges that are horizontally aligned on the image
+        sobely = np.absolute(self.sobel(img, orientacao='y', kernel=kernel))
+
+        mag = np.sqrt(sobelx ** 2 + sobely ** 2)
+
+        return mag
 
 # © 2023 CarAI.

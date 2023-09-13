@@ -10,7 +10,7 @@ class TransformacaoDePerspectiva:
         self.yf = (450 // fator_reducao)        # Posição vertical dos pontos de origem
         self.offset_x = 0  # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
 
-        #self.birds_view = False
+        self.altura_baixa = True
 
     def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
         """
@@ -56,7 +56,16 @@ class TransformacaoDePerspectiva:
         #if not(self.birds_view):
             #self.xfd = img.shape[1]
 
-        src = np.float32([(self.offset_x, img_altura),                      # top-left
+        if self.altura_baixa:
+            src = np.float32([
+                (self.offset_x, img_altura),  # top-left
+                (self.offset_x, self.yf),  # bottom-left
+                (img_largura - self.offset_x, self.yf),  # bottom-right
+                (img_largura - self.offset_x, img_altura)  # top-right
+            ])
+
+        else:
+            src = np.float32([(self.offset_x, img_altura),                      # top-left
                                (centro_x - self.xfd, self.yf),              # bottom-left
                                (centro_x + self.xfd, self.yf),              # bottom-right
                                (img_largura - self.offset_x, img_altura)])  # top-right
