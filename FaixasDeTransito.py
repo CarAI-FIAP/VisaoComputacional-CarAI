@@ -21,6 +21,10 @@ if configuracoes.comunicacao_serial_habilitada:
     serial_arduino = serial.Serial(port, rate)
 
 dist_max_entre_faixas = []
+angulo_padrao_lista = []
+
+# Qtd de dados necessários para setar os valores do ângulo padrão e da distância entre as faixas
+qtd_max_dados = 50 
 
 
 class FaixasDeTransito:
@@ -66,11 +70,22 @@ class FaixasDeTransito:
 
         # Alterar coordenada_min_y de acordo com a altura da img_filtrada
         if self.birds_view:
-            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
+            pontos, coord_faixas, angulos, _ = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
                         200 // self.fator_reducao))
         else:
-            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
-                        200 // self.fator_reducao))
+            print(len(angulo_padrao_lista))
+            if len(angulo_padrao_lista) == qtd_max_dados:
+                angulo_padrao = int(np.mean(angulo_padrao_lista))
+
+                pontos, coord_faixas, angulos, _ = self.calcular_resultados_faixas(img_filtrada,
+                            img_filtrada.shape[0] - (200 // self.fator_reducao), angulo_padrao)
+
+            else:
+                pontos, coord_faixas, angulos, angulos_sem_correcao = self.calcular_resultados_faixas(img_filtrada,
+                            img_filtrada.shape[0] - (200 // self.fator_reducao))
+
+                if len(angulo_padrao_lista) < qtd_max_dados and coord_faixas[0] != 0 and coord_faixas[1] != 0:
+                    angulo_padrao_lista.append(np.nanmin(angulos_sem_correcao))
 
         if len(angulos) < 1:
             angulo = None
@@ -79,12 +94,10 @@ class FaixasDeTransito:
 
         faixa_esquerda, faixa_direita = coord_faixas
 
-        qtd_dist_max = 80
-
         if faixa_esquerda != 0 and faixa_direita != 0:
             offset, dist_entre_faixas = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
 
-            if len(dist_max_entre_faixas) < qtd_dist_max:
+            if len(dist_max_entre_faixas) < qtd_max_dados:
                 dist_max_entre_faixas.append(dist_entre_faixas)
 
         elif faixa_esquerda == 0 or faixa_direita == 0:
@@ -149,7 +162,7 @@ class FaixasDeTransito:
         else:
             cv2.destroyAllWindows()
 
-    def calcular_resultados_faixas(self, img, coordenada_min_y):
+    def calcular_resultados_faixas(self, img, coordenada_min_y, angulo_padrao_medio=40, debug=False):
         y_faixas = coordenada_min_y
         y90 = coordenada_min_y + (120 // self.fator_reducao)
 
@@ -179,7 +192,7 @@ class FaixasDeTransito:
 
         angulos = []
 
-        angulo_padrao = 40
+        angulos_sem_correcao = []
 
         # Verificar se existem pontos identificados
         if pontos:
@@ -194,8 +207,11 @@ class FaixasDeTransito:
                     angulo_BAP = math.degrees(math.atan(BP / AP))
                     # print('Ângulo BAP:', angulo_BAP)
 
+                    if x_esquerda != 0 and x_direita != 0:
+                        angulos_sem_correcao.append(angulo_BAP)
+
                     if not (self.birds_view):
-                        angulo_BAP -= angulo_padrao
+                        angulo_BAP -= angulo_padrao_medio
                         angulo_BAP = abs(angulo_BAP)
 
                     if angulo_BAP != 0:
@@ -210,7 +226,7 @@ class FaixasDeTransito:
         else:
             print('Nenhuma faixa foi encontrada. Ajuste os parâmetros para identificá-las!')
 
-        return pontos, coord_faixas, angulos
+        return pontos, coord_faixas, angulos, angulos_sem_correcao
 
     def calcular_offset(self, img, pontos, dist_max_entre_faixas=533, debug=False):
         posicao_carro = img.shape[1] / 2
