@@ -1,16 +1,20 @@
 import cv2
 import numpy as np
 
+from Configuracoes import *
+
 class TransformacaoDePerspectiva:
     # Classe para realizar transformações de perspectiva na imagem.
 
-    def __init__(self, fator_reducao=1):
-        # Definição dos valores fixos para os deslocamentos e coordenadas dos pontos de origem
-        self.xfd = (162 // fator_reducao)        # Deslocamento horizontal em relação ao centro da imagem
-        self.yf = (450 // fator_reducao)        # Posição vertical dos pontos de origem
-        self.offset_x = 0  # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
+    def __init__(self):
+        self.configuracoes = Configuracoes()
 
-        self.altura_baixa = True
+        # Definição dos valores fixos para os deslocamentos e coordenadas dos pontos de origem
+        self.xfd = (self.configuracoes.xfd_valor // self.configuracoes.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
+        self.yf = (self.configuracoes.yf_valor // self.configuracoes.fator_reducao)     # Posição vertical dos pontos de origem
+        self.offset_x = self.configuracoes.offset_x                                     # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
+
+        self.perspectiva_retangular = self.configuracoes.perspectiva_retangular_habilitada
 
     def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
         """
@@ -56,7 +60,7 @@ class TransformacaoDePerspectiva:
         #if not(self.birds_view):
             #self.xfd = img.shape[1]
 
-        if self.altura_baixa:
+        if self.perspectiva_retangular:
             src = np.float32([
                 (self.offset_x, img_altura),  # top-left
                 (self.offset_x, self.yf),  # bottom-left

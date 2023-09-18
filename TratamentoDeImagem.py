@@ -1,18 +1,13 @@
 import cv2
 import numpy as np
+
+from Configuracoes import *
+
 class TratamentoDeImagem:
     # Classe para reunir todos os métodos de tratamento de imagem.
 
     def __init__(self):
-        self.thresh = 115
-
-    def criar_trackbar(self):
-        cv2.namedWindow(self.nome_trackbar)
-        cv2.createTrackbar(self.nome_thresh, self.nome_trackbar, self.thresh, 255, self.atualizar_posicao_trackbar)
-
-    def atualizar_posicao_trackbar(self, x):
-        cv2.getTrackbarPos(self.nome_thresh, self.nome_trackbar)
-        print(self.thresh)
+        self.configuracoes = Configuracoes()
 
     def aplicar_filtros(self, img):
         """
@@ -135,7 +130,7 @@ class TratamentoDeImagem:
         img_cinza = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img_blur = cv2.GaussianBlur(img_cinza, (5, 5), 1)
 
-        return cv2.threshold(img_blur, self.thresh, 255, threshold_tipo)[1]
+        return cv2.threshold(img_blur, 112, 255, threshold_tipo)[1]
 
     def sobel(self, img, orientacao='x', kernel=3):
         if orientacao == 'x':

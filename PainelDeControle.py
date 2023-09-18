@@ -40,7 +40,7 @@ class PainelDeControle(customtkinter.CTk):
         self.select_rate_label = customtkinter.CTkLabel(master=self.sidebar_frame, text='Rate:', anchor='w')
         self.select_rate_label.grid(row=7, column=0, padx=0, pady=(20, 0))
         self.select_rate = customtkinter.CTkComboBox(master=self.sidebar_frame,
-                                                     values=['115200', '9600'])
+                                                     values=['9600', '115200'])
         self.select_rate.grid(row=8, column=0, padx=0, pady=(0, 30))
 
         self.container_frame = customtkinter.CTkFrame(self)
@@ -66,20 +66,13 @@ class PainelDeControle(customtkinter.CTk):
                                                          text='Habilitar perspectiva de pássaro')
         self.switch_birds_view.grid(row=2, column=0, pady=10, padx=20, sticky='w')
 
-        self.switch_camera = customtkinter.CTkSwitch(master=self.tabview.tab('Configurações'),
-                                                     text='Habilitar câmera')
-        self.switch_camera.grid(row=3, column=0, pady=10, padx=20, sticky='w')
+        self.switch_camera_faixas = customtkinter.CTkSwitch(master=self.tabview.tab('Configurações'),
+                                                     text='Habilitar câmera p/ detecção de faixas')
+        self.switch_camera_faixas.grid(row=3, column=0, pady=10, padx=20, sticky='w')
 
-        self.switch_calibracao_camera = customtkinter.CTkSwitch(master=self.tabview.tab('Configurações'),
-                                                                text='Habilitar calibração da câmera')
-        self.switch_calibracao_camera.grid(row=4, column=0, pady=(10, 20), padx=20, sticky='w')
-
-        self.select_coodernada_min_y_label = customtkinter.CTkLabel(master=self.tabview.tab('Configurações'),
-                                                                 text='Coodernada min de identifcação no eixo y', anchor='w')
-        self.select_coodernada_min_y_label.grid(row=5, column=0, padx=20, pady=0)
-        self.select_coodernada_min_y = customtkinter.CTkComboBox(master=self.tabview.tab('Configurações'),
-                                                              values=['200'])
-        self.select_coodernada_min_y.grid(row=6, column=0, padx=20, pady=(0, 20))
+        self.switch_camera_sinalizacao = customtkinter.CTkSwitch(master=self.tabview.tab('Configurações'),
+                                                                text='Habilitar câmera p/ detecção de sinalizações')
+        self.switch_camera_sinalizacao.grid(row=4, column=0, pady=(10, 20), padx=20, sticky='w')
 
         self.select_fator_reducao_label = customtkinter.CTkLabel(master=self.tabview.tab('Configurações'),
                                                                  text='Fator de redução', anchor='w')
@@ -221,8 +214,12 @@ class PainelDeControle(customtkinter.CTk):
         self.select_thresh_tipo.grid(row=2, column=2, padx=(0, 20), pady=20)
 
         # Aba | Transformação de perspectiva
+        self.switch_perspectiva_retangular = customtkinter.CTkSwitch(master=self.tabview.tab('Perspectiva'),
+                                                     text='Habilitar região de interesse retangular')
+        self.switch_perspectiva_retangular.grid(row=0, column=0, pady=(30, 20), padx=20, sticky='w')
+
         self.frame_xfd = customtkinter.CTkFrame(master=self.tabview.tab('Perspectiva'))
-        self.frame_xfd.grid(row=1, column=0, padx=20, pady=(30, 0), sticky='nsew')
+        self.frame_xfd.grid(row=1, column=0, padx=20, pady=0, sticky='nsew')
 
         self.xfd_valor = tkinter.DoubleVar()
 
@@ -272,16 +269,11 @@ class PainelDeControle(customtkinter.CTk):
                                                 font=customtkinter.CTkFont(size=14, weight='normal'))
         self.offset_x_label.grid(row=0, column=2, padx=20, pady=20)
 
-
-        self.checkbox_altura_camera = customtkinter.CTkCheckBox(master=self.tabview.tab('Perspectiva'),
-                                                                text='A câmera está posicionada em uma altura baixa')
-        self.checkbox_altura_camera.grid(row=4, column=0, pady=20, padx=20, sticky='w')
-
         # Valores padrão
         self.select_fator_reducao.set('3')
 
         self.switch_canal_l.select()
-        self.canal_l_min.set(0.75)
+        self.canal_l_min.set(0.85)
         self.canal_l_max.set(1)
         self.switch_canal_h.select()
         self.canal_h_min.set(20)
@@ -298,17 +290,6 @@ class PainelDeControle(customtkinter.CTk):
         self.xfd_valor.set(162)
         self.yf_valor.set(450)
         self.offset_x_valor.set(0)
-
-    def open_input_dialog_event(self):
-        dialog = customtkinter.CTkInputDialog(text='Type in a number:', title='CTkInputDialog')
-        print("CTkInputDialog:", dialog.get_input())
-
-    def change_appearance_mode_event(self, new_appearance_mode: str):
-        customtkinter.set_appearance_mode(new_appearance_mode)
-
-    def change_scaling_event(self, new_scaling: str):
-        new_scaling_float = int(new_scaling.replace('%', '')) / 100
-        customtkinter.set_widget_scaling(new_scaling_float)
 
     def sidebar_button_event(self):
         print('sidebar_button click')

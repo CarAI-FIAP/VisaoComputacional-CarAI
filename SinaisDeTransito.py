@@ -2,15 +2,19 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from ultralytics import YOLO
+from ultralytics import NAS
+
+from TratamentoDeImagem import *
 
 # Carregamento do modelo
-modelo_yolo = YOLO('models/yolov8x.pt')
+modelo_yolo = YOLO('models/yolov8n.pt')
+#modelo_yolo = NAS('yolo_nas_s.pt')
 
 class SinaisDeTransito:
     # Classe para identificar as placas de trânsito e os semáforos.
 
     def __init__(self):
-        pass
+        self.tratamento = TratamentoDeImagem()
 
     def classificar_objetos(self, img):
         # Roda o modelo YOLOv8 treinado na imagem
@@ -70,10 +74,10 @@ class SinaisDeTransito:
                     # Classificação da cor do semáforo -> luz acesa possui mais pixels
                     luz_acesa = np.argmax(luz_semaforo_qtd_pixels) # Retorna o índice do maior valor do array
                     cores = ['vermelho', 'amarelo', 'verde']
-                    print('Semáforo', cores[luz_acesa])
+                    print('Semaforo', cores[luz_acesa])
 
         img_com_resultados = resultados[0].plot()
 
-        return img_com_resultados
+        cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 350))
 
 # © 2023 CarAI.

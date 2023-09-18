@@ -6,89 +6,105 @@ import math
 import serial
 import time
 
-from CalibracaoCamera import CalibracaoCamera
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
+from Configuracoes import *
 
-comunicacao_arduino = True
+configuracoes = Configuracoes()
 
-port = 'COM9'
-rate = 115200
+comunicacao_arduino = configuracoes.comunicacao_serial_habilitada
 
-if comunicacao_arduino:
+port = configuracoes.arduino_port
+rate = configuracoes.arduino_rate
+
+if configuracoes.comunicacao_serial_habilitada:
     serial_arduino = serial.Serial(port, rate)
-    #time.sleep(0.01)
+
+dist_max_entre_faixas = []
+
 
 class FaixasDeTransito:
     # Classe para classificar as faixas de trânsito.
 
-    def __init__(self, fator_reducao):
-        self.fator_reducao = fator_reducao
-        self.birds_view = False
+    def __init__(self):
+        self.fator_reducao = configuracoes.fator_reducao
+        self.birds_view = configuracoes.perspectiva_habilitada
 
-        #self.calibracao = CalibracaoCamera('camera_cal', 9, 6)
         self.tratamento = TratamentoDeImagem()
-        self.transformacao = TransformacaoDePerspectiva(fator_reducao)
+        self.transformacao = TransformacaoDePerspectiva()
 
     def fechar_conexao(self):
         serial_arduino.close()
 
-    def enviar_dados_para_arduino(self, dados):
+    def enviar_dados_para_arduino(self, dados, debug=False):
         angulo, esquerda_x, direita_x, offset = dados
         dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset}\n'
-        #dados_enviar = f'{angulo},{offset}\n'
 
         serial_arduino.write(dados_enviar.encode())
         time.sleep(0.01)
 
-        dados_recebidos = serial_arduino.readline().decode('latin-1').strip()
-        print(f'\n{dados_recebidos}', end='')
+        if debug:
+            dados_recebidos = serial_arduino.readline().decode('utf-8').strip()
+            print(f'\n{dados_recebidos}', end='')
 
-    def identificar_faixas(self, img, debug=True, prints=False):
+    def identificar_faixas(self, img, debug=True, prints=True):
+        global offset
+
         img_copia = np.copy(img)
-        #img = self.calibracao.corrigir_distorcao(img)
 
         if self.birds_view:
             img = self.transformacao.mudar_perspectiva(img)
 
         img_threshold = self.tratamento.binarizar_imagem(img)
-        #img_threshold = self.tratamento.binarizar_imagem(img)
 
         img_filtrada = self.tratamento.aplicar_filtros(img_threshold)
 
-        if not(self.birds_view):
+        if not (self.birds_view):
             img_roi = self.transformacao.desenhar_roi(img_copia)
         else:
             img_roi = self.transformacao.desenhar_roi(img_copia)
 
         # Alterar coordenada_min_y de acordo com a altura da img_filtrada
         if self.birds_view:
-            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (200 // self.fator_reducao))
+            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
+                        200 // self.fator_reducao))
         else:
-            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (200 // self.fator_reducao))
-
-        if coord_faixas[0] and coord_faixas[1]:
-            offset = int(self.calcular_offset(img, [coord_faixas[0], coord_faixas[1]]))
-        else:
-            offset = 2000
+            pontos, coord_faixas, angulos = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
+                        200 // self.fator_reducao))
 
         if len(angulos) < 1:
             angulo = None
-        #elif len(angulos) > 1 and (abs(abs(angulos[0]) - abs(angulos[1])) > 10):
-            #angulo = int(np.nanmax(angulos))
         else:
             angulo = int(np.nanmin(angulos))
 
-        dados = (angulo, coord_faixas[0], coord_faixas[1], offset)
+        faixa_esquerda, faixa_direita = coord_faixas
 
-        #with open('valores_offset.txt', 'a') as arquivo:
-            #arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset} | {angulo}\n')
+        qtd_dist_max = 80
+
+        if faixa_esquerda != 0 and faixa_direita != 0:
+            offset, dist_entre_faixas = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
+
+            if len(dist_max_entre_faixas) < qtd_dist_max:
+                dist_max_entre_faixas.append(dist_entre_faixas)
+
+        elif faixa_esquerda == 0 or faixa_direita == 0:
+            dist_max = int(np.nanmax(dist_max_entre_faixas))
+
+            if dist_max:
+                offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita], dist_max)
+            else:
+                offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
+
+        else:
+            offset = 2000
+
+        # with open('valores_offset.txt', 'a') as arquivo:
+        # arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset} | {angulo}\n')
+
+        dados = (angulo, faixa_esquerda, faixa_direita, offset)
 
         if comunicacao_arduino:
             self.enviar_dados_para_arduino(dados)
-
-        #print('\n', offset, end=' | ')
-        #print(angulo, end=' | ')
 
         if debug:
             out_img = np.copy(img)
@@ -97,8 +113,8 @@ class FaixasDeTransito:
                 print('\nOffset: ', offset)
                 print('Ângulos: ', angulos)
                 print('Ângulo ABP:', angulo)
-                print('Esquerda (x): ', coord_faixas[0])
-                print('Direita (x): ', coord_faixas[1])
+                print('Esquerda (x): ', faixa_esquerda)
+                print('Direita (x): ', faixa_direita)
 
             for i, pontos_triangulo in enumerate(pontos):
                 for j, ponto in enumerate(pontos_triangulo):
@@ -116,31 +132,19 @@ class FaixasDeTransito:
             espessura_linha = 12 // self.fator_reducao
             cv2.line(out_img, (largura_img // 2, 0), (largura_img // 2, altura_img), (0, 0, 0), espessura_linha)
 
-            #angulo_radianos = np.deg2rad(angulo)
-            #x2 = int(largura_img // 2 + largura_img * np.cos(angulo_radianos))
-            #y2 = int(0 + largura_img * np.sin(angulo_radianos))
-
-            #cv2.line(out_img, (largura_img // 2, 0), (x2, y2), (0, 0, 0), espessura_linha)
-
             img_resultados = self.tratamento.juntar_videos([img_filtrada, out_img])
 
             if self.fator_reducao > 4:
-                #cv2.imshow('img', img)
-                #cv2.imshow('img_filtrada', img_filtrada)
-                #cv2.imshow('out_img', out_img)
+                cv2.imshow('Resultados', img_resultados)
 
                 if self.birds_view:
                     cv2.imshow('Imagem ROI', img_roi)
-                cv2.imshow('Resultados', img_resultados)
 
             else:
-                #cv2.imshow('img', self.tratamento.redimensionar_imagem(img, 250))
-                #cv2.imshow('img_filtrada', self.tratamento.redimensionar_imagem(img_filtrada, 450))
-                #cv2.imshow('out_img', self.tratamento.redimensionar_imagem(out_img, 280))
-                if self.birds_view:
-                    cv2.imshow('Imagem ROI', self.tratamento.redimensionar_imagem(img_roi, 280))
                 cv2.imshow('Resultados', self.tratamento.redimensionar_imagem(img_resultados, 280))
 
+                if self.birds_view:
+                    cv2.imshow('Imagem ROI', self.tratamento.redimensionar_imagem(img_roi, 280))
 
         else:
             cv2.destroyAllWindows()
@@ -160,16 +164,18 @@ class FaixasDeTransito:
         pontos = []
 
         if x_esquerda != 0 or x_esquerda_B != 0:
-            pontos_triangulo_esquerda = [(int(x_esquerda), int(y_faixas)), (int(x_esquerda_B), int(y90)), (int(x_esquerda), int(y90))]
+            pontos_triangulo_esquerda = [(int(x_esquerda), int(y_faixas)), (int(x_esquerda_B), int(y90)),
+                                         (int(x_esquerda), int(y90))]
             pontos.append(pontos_triangulo_esquerda)
-        #else:
-            #print('Curva à esquerda')
+        # else:
+        # print('Curva à esquerda')
 
         if x_direita != 0 or x_direita_B != 0:
-            pontos_triangulo_direita = [(int(x_direita), int(y_faixas)), (int(x_direita_B), int(y90)), (int(x_direita), int(y90))]
+            pontos_triangulo_direita = [(int(x_direita), int(y_faixas)), (int(x_direita_B), int(y90)),
+                                        (int(x_direita), int(y90))]
             pontos.append(pontos_triangulo_direita)
-        #else:
-            #print('Curva à direita')
+        # else:
+        # print('Curva à direita')
 
         angulos = []
 
@@ -184,11 +190,11 @@ class FaixasDeTransito:
                 BP = math.sqrt((ponto_90[0] - ponto_B[0]) ** 2 + (ponto_90[1] - ponto_B[1]) ** 2)
 
                 try:
-                    #angulo_ABP = math.degrees(math.atan(AP / BP))
+                    # angulo_ABP = math.degrees(math.atan(AP / BP))
                     angulo_BAP = math.degrees(math.atan(BP / AP))
-                    #print('Ângulo BAP:', angulo_BAP)
+                    # print('Ângulo BAP:', angulo_BAP)
 
-                    if not(self.birds_view):
+                    if not (self.birds_view):
                         angulo_BAP -= angulo_padrao
                         angulo_BAP = abs(angulo_BAP)
 
@@ -206,32 +212,63 @@ class FaixasDeTransito:
 
         return pontos, coord_faixas, angulos
 
-    def calcular_offset(self, img, pontos, offset_real=True):
+    def calcular_offset(self, img, pontos, dist_max_entre_faixas=533, debug=False):
         posicao_carro = img.shape[1] / 2
 
-        if len(pontos) == 2:
-            centro_pista = (pontos[1] - pontos[0]) / 2 + pontos[0]
+        ponto_esquerda, ponto_direita = pontos
+
+        if ponto_esquerda != 0 and ponto_direita != 0:
+            centro_pista = (ponto_direita - ponto_esquerda) / 2 + ponto_esquerda
+
+            # distancia = (ponto_direita - ponto_esquerda)
+            # print(distancia)
 
             # Offset do centro do carro para o centro da pista (em pixels)
             offset = (np.abs(posicao_carro) - np.abs(centro_pista))
 
-            # Offsets máximos p/ esquerda e direita
-            offset_esquerda = (np.abs(pontos[0]) - np.abs(centro_pista))
-            offset_direita = (np.abs(pontos[1]) - np.abs(centro_pista))
+            dist_entre_faixas = (np.abs(ponto_direita) - np.abs(ponto_esquerda))
 
-            #print('offset_esquerda', offset_esquerda)
-            #print('offset_direita', offset_direita)
+            if debug:
+                print('\nCP:', centro_pista)
+                print('offset:', offset)
+                print('XFD:', ponto_direita)
+                print('XFE:', ponto_esquerda)
 
-            #with open('valores_offset.txt', 'a') as arquivo:
-                #arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset}\n')
+            return offset, dist_entre_faixas
+
+        elif ponto_esquerda != 0:
+            centro_pista = ponto_esquerda + (dist_max_entre_faixas / 2)
+
+            offset = (np.abs(posicao_carro) - np.abs(centro_pista))
+
+            if debug:
+                print('\nCP:', centro_pista)
+                print('offset:', offset)
+                print('dist_max:', dist_max_entre_faixas)
+                print('CI:', posicao_carro)
+                print('XFD:', ponto_direita)
+                print('XFE:', ponto_esquerda)
+
+            return offset
+
+        elif ponto_direita != 0:
+            centro_pista = ponto_direita - (dist_max_entre_faixas / 2)
+
+            offset = (np.abs(posicao_carro) - np.abs(centro_pista))
+
+            if debug:
+                print('\nCP:', centro_pista)
+                print('offset:', offset)
+                print('CI:', posicao_carro)
+                print('XFD:', ponto_direita)
+                print('XFE:', ponto_esquerda)
+
+            return offset
 
         else:
-            offset = None
+            offset = 2000
 
-            offset_esquerda = (np.abs(pontos[0]) - np.abs(posicao_carro))
-            offset_direita = (np.abs(pontos[1]) - np.abs(posicao_carro))
-
-        return offset
+            return offset
 
     def calcular_histograma_pista(self, img, altura_min, altura_max):
         """
@@ -247,9 +284,9 @@ class FaixasDeTransito:
         """
         histograma = np.sum(img[int(altura_min):int(altura_max), :], axis=0)
 
-        #plt.plot(histograma)
-        #plt.title('Histograma')
-        #plt.show()
+        # plt.plot(histograma)
+        # plt.title('Histograma')
+        # plt.show()
 
         return histograma
 
