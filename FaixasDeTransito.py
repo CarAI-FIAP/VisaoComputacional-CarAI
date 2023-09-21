@@ -5,56 +5,38 @@ from spicy import signal
 import math
 import serial
 import time
+import sys
 
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
 from Configuracoes import *
 
-configuracoes = Configuracoes()
-
-comunicacao_arduino = configuracoes.comunicacao_serial_habilitada
-
-port = configuracoes.arduino_port
-rate = configuracoes.arduino_rate
-
-if configuracoes.comunicacao_serial_habilitada:
-    serial_arduino = serial.Serial(port, rate)
-
 dist_max_entre_faixas = []
 angulo_padrao_lista = []
 
 # Qtd de dados necessários para setar os valores do ângulo padrão e da distância entre as faixas
-qtd_max_dados = 50 
-
+qtd_max_dados = 50
 
 class FaixasDeTransito:
     # Classe para classificar as faixas de trânsito.
 
     def __init__(self):
-        self.fator_reducao = configuracoes.fator_reducao
-        self.birds_view = configuracoes.perspectiva_habilitada
+        self.configuracoes = Configuracoes()
 
         self.tratamento = TratamentoDeImagem()
         self.transformacao = TransformacaoDePerspectiva()
 
-    def fechar_conexao(self):
-        serial_arduino.close()
+        self.fator_reducao = self.configuracoes.fator_reducao
+        self.birds_view = False
 
-    def enviar_dados_para_arduino(self, dados, debug=False):
-        angulo, esquerda_x, direita_x, offset = dados
-        dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset}\n'
+        self.curvas = []
 
-        serial_arduino.write(dados_enviar.encode())
-        time.sleep(0.01)
-
-        if debug:
-            dados_recebidos = serial_arduino.readline().decode('utf-8').strip()
-            print(f'\n{dados_recebidos}', end='')
-
-    def identificar_faixas(self, img, debug=True, prints=True):
+    def identificar_faixas(self, img, debug=True, prints=False):
         global offset
 
         img_copia = np.copy(img)
+
+        #print("bird's view (painel):", self.configuracoes.get_birds_view())
 
         if self.birds_view:
             img = self.transformacao.mudar_perspectiva(img)
@@ -73,9 +55,10 @@ class FaixasDeTransito:
             pontos, coord_faixas, angulos, _ = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
                         200 // self.fator_reducao))
         else:
-            print(len(angulo_padrao_lista))
             if len(angulo_padrao_lista) == qtd_max_dados:
                 angulo_padrao = int(np.mean(angulo_padrao_lista))
+
+                #print('Angulo padrão encontrado:', angulo_padrao)
 
                 pontos, coord_faixas, angulos, _ = self.calcular_resultados_faixas(img_filtrada,
                             img_filtrada.shape[0] - (200 // self.fator_reducao), angulo_padrao)
@@ -88,7 +71,7 @@ class FaixasDeTransito:
                     angulo_padrao_lista.append(np.nanmin(angulos_sem_correcao))
 
         if len(angulos) < 1:
-            angulo = None
+            angulo = 1999
         else:
             angulo = int(np.nanmin(angulos))
 
@@ -100,34 +83,30 @@ class FaixasDeTransito:
             if len(dist_max_entre_faixas) < qtd_max_dados:
                 dist_max_entre_faixas.append(dist_entre_faixas)
 
-        elif faixa_esquerda == 0 or faixa_direita == 0:
-            dist_max = int(np.nanmax(dist_max_entre_faixas))
+            elif faixa_esquerda == 0 or faixa_direita == 0:
+                dist_max = int(np.nanmax(dist_max_entre_faixas))
 
-            if dist_max:
-                offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita], dist_max)
+                if dist_max:
+                    offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita], dist_max)
+                else:
+                    offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
+
             else:
-                offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
-
-        else:
-            offset = 2000
+                offset = 2000
 
         # with open('valores_offset.txt', 'a') as arquivo:
         # arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset} | {angulo}\n')
-
-        dados = (angulo, faixa_esquerda, faixa_direita, offset)
-
-        if comunicacao_arduino:
-            self.enviar_dados_para_arduino(dados)
 
         if debug:
             out_img = np.copy(img)
 
             if prints:
                 print('\nOffset: ', offset)
-                print('Ângulos: ', angulos)
-                print('Ângulo ABP:', angulo)
+                print('Angulos: ', angulos)
+                print('Angulo ABP:', angulo)
                 print('Esquerda (x): ', faixa_esquerda)
                 print('Direita (x): ', faixa_direita)
+                sys.stdout.flush()
 
             for i, pontos_triangulo in enumerate(pontos):
                 for j, ponto in enumerate(pontos_triangulo):
@@ -161,6 +140,8 @@ class FaixasDeTransito:
 
         else:
             cv2.destroyAllWindows()
+
+        return angulo, faixa_esquerda, faixa_direita, offset
 
     def calcular_resultados_faixas(self, img, coordenada_min_y, angulo_padrao_medio=40, debug=False):
         y_faixas = coordenada_min_y
@@ -209,8 +190,10 @@ class FaixasDeTransito:
 
                     if x_esquerda != 0 and x_direita != 0:
                         angulos_sem_correcao.append(angulo_BAP)
+                        #print('angulo_BAP', angulo_BAP)
 
                     if not (self.birds_view):
+                        #print('angulo_padrao_medio', angulo_padrao_medio)
                         angulo_BAP -= angulo_padrao_medio
                         angulo_BAP = abs(angulo_BAP)
 
@@ -243,6 +226,8 @@ class FaixasDeTransito:
             offset = (np.abs(posicao_carro) - np.abs(centro_pista))
 
             dist_entre_faixas = (np.abs(ponto_direita) - np.abs(ponto_esquerda))
+            with open('dist_entre_faixas.txt', 'a') as arquivo:
+                arquivo.write(f'{dist_entre_faixas}\n')
 
             if debug:
                 print('\nCP:', centro_pista)

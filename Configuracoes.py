@@ -1,16 +1,10 @@
-from PainelDeControle import PainelDeControle
+from PainelDeControle import *
 
 class Configuracoes:
     def __init__(self):
         self.painel_de_controle = PainelDeControle()
 
-        self.arduino_port = self.painel_de_controle.select_port.get()
-        self.arduino_rate = int(self.painel_de_controle.select_rate.get())
-
-        # Aba | Configurações gerais
-
-        self.comunicacao_serial_habilitada = bool(self.painel_de_controle.switch_comunicacao_serial.get())
-        self.perspectiva_habilitada = bool(self.painel_de_controle.switch_birds_view.get())
+        self.perspectiva_habilitada = self.get_birds_view()
         self.camera_faixas_habilitada = bool(self.painel_de_controle.switch_camera_faixas.get())
         self.camera_sinalizacao_habilitada = bool(self.painel_de_controle.switch_camera_sinalizacao.get())
         self.fator_reducao = int(self.painel_de_controle.select_fator_reducao.get())
@@ -43,6 +37,21 @@ class Configuracoes:
         self.xfd_valor = int(self.painel_de_controle.xfd_valor.get())
         self.yf_valor = int(self.painel_de_controle.yf_valor.get())
         self.offset_x = int(self.painel_de_controle.offset_x_valor.get())
+
+    # Aba | Configurações gerais
+    def get_arduino_port(self):
+        return self.painel_de_controle.select_port.get()
+
+    def get_arduino_rate(self):
+        return int(self.painel_de_controle.select_rate.get())
+
+    def get_switch_comunicacao_serial(self):
+        return bool(self.painel_de_controle.switch_comunicacao_serial.get())
+
+    def get_birds_view(self):
+        birds_view = bool(self.painel_de_controle.switch_birds_view.get())
+
+        return birds_view
 
     def inicializar_painel_de_controle(self):
         self.painel_de_controle.mainloop()

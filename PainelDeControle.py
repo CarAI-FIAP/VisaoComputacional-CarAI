@@ -67,11 +67,11 @@ class PainelDeControle(customtkinter.CTk):
         self.switch_birds_view.grid(row=2, column=0, pady=10, padx=20, sticky='w')
 
         self.switch_camera_faixas = customtkinter.CTkSwitch(master=self.tabview.tab('Configurações'),
-                                                     text='Habilitar câmera p/ detecção de faixas')
+                                                            text='Habilitar câmera p/ detecção de faixas')
         self.switch_camera_faixas.grid(row=3, column=0, pady=10, padx=20, sticky='w')
 
         self.switch_camera_sinalizacao = customtkinter.CTkSwitch(master=self.tabview.tab('Configurações'),
-                                                                text='Habilitar câmera p/ detecção de sinalizações')
+                                                                 text='Habilitar câmera p/ detecção de sinalizações')
         self.switch_camera_sinalizacao.grid(row=4, column=0, pady=(10, 20), padx=20, sticky='w')
 
         self.select_fator_reducao_label = customtkinter.CTkLabel(master=self.tabview.tab('Configurações'),
@@ -185,7 +185,7 @@ class PainelDeControle(customtkinter.CTk):
 
         # Aba | Tratamento de imagem
         self.switch_threshold_tradicional = customtkinter.CTkSwitch(master=self.tabview.tab('Imagem'),
-                                                                 text='Habilitar threshold tradicional')
+                                                                    text='Habilitar threshold tradicional')
         self.switch_threshold_tradicional.grid(row=0, column=0, pady=(30, 20), padx=20, sticky='w')
 
         self.frame_thresh = customtkinter.CTkFrame(master=self.tabview.tab('Imagem'))
@@ -195,27 +195,27 @@ class PainelDeControle(customtkinter.CTk):
         self.thresh_min = tkinter.DoubleVar()
 
         self.slider_thresh_min = customtkinter.CTkSlider(master=self.frame_thresh, from_=0, to=255,
-                                                          variable=self.thresh_min, width=120,
-                                                          number_of_steps=51)
+                                                         variable=self.thresh_min, width=120,
+                                                         number_of_steps=51)
         self.slider_thresh_min.grid(row=1, column=0, padx=20, pady=(20, 0), sticky='w')
         self.input_thresh_min = customtkinter.CTkEntry(master=self.frame_thresh, width=50,
-                                                        textvariable=self.thresh_min)
+                                                       textvariable=self.thresh_min)
         self.input_thresh_min.grid(row=1, column=1, padx=(0, 20), pady=(20, 0), sticky='w')
         self.slider_thresh_max = customtkinter.CTkSlider(master=self.frame_thresh, from_=0, to=255,
-                                                          variable=self.thresh_max, width=120,
-                                                          number_of_steps=51)
+                                                         variable=self.thresh_max, width=120,
+                                                         number_of_steps=51)
         self.slider_thresh_max.grid(row=2, column=0, padx=20, pady=0, sticky='w')
         self.input_thresh_max = customtkinter.CTkEntry(master=self.frame_thresh, width=50,
-                                                        textvariable=self.thresh_max)
+                                                       textvariable=self.thresh_max)
         self.input_thresh_max.grid(row=2, column=1, padx=(0, 20), pady=20, sticky='w')
 
         self.select_thresh_tipo = customtkinter.CTkComboBox(master=self.frame_thresh,
-                                                              values=['cv2.THRESH_BINARY + cv2.THRESH_OTSU'])
+                                                            values=['cv2.THRESH_BINARY + cv2.THRESH_OTSU'])
         self.select_thresh_tipo.grid(row=2, column=2, padx=(0, 20), pady=20)
 
         # Aba | Transformação de perspectiva
         self.switch_perspectiva_retangular = customtkinter.CTkSwitch(master=self.tabview.tab('Perspectiva'),
-                                                     text='Habilitar região de interesse retangular')
+                                                                     text='Habilitar região de interesse retangular')
         self.switch_perspectiva_retangular.grid(row=0, column=0, pady=(30, 20), padx=20, sticky='w')
 
         self.frame_xfd = customtkinter.CTkFrame(master=self.tabview.tab('Perspectiva'))
@@ -224,11 +224,11 @@ class PainelDeControle(customtkinter.CTk):
         self.xfd_valor = tkinter.DoubleVar()
 
         self.slider_xfd = customtkinter.CTkSlider(master=self.frame_xfd, from_=0, to=1280,
-                                                          variable=self.xfd_valor, width=200,
-                                                          number_of_steps=1280)
+                                                  variable=self.xfd_valor, width=200,
+                                                  number_of_steps=1280)
         self.slider_xfd.grid(row=0, column=0, padx=20, pady=20, sticky='w')
         self.input_xfd = customtkinter.CTkEntry(master=self.frame_xfd, width=50,
-                                                        textvariable=self.xfd_valor)
+                                                textvariable=self.xfd_valor)
         self.input_xfd.grid(row=0, column=1, padx=(0, 20), pady=20, sticky='w')
 
         self.xfd_label = customtkinter.CTkLabel(master=self.frame_xfd, text='xfd', anchor='w',
@@ -241,15 +241,15 @@ class PainelDeControle(customtkinter.CTk):
         self.yf_valor = tkinter.DoubleVar()
 
         self.slider_yf = customtkinter.CTkSlider(master=self.frame_yf, from_=0, to=720,
-                                                          variable=self.yf_valor, width=200,
-                                                          number_of_steps=720)
+                                                 variable=self.yf_valor, width=200,
+                                                 number_of_steps=720)
         self.slider_yf.grid(row=0, column=0, padx=20, pady=20, sticky='w')
         self.input_yf = customtkinter.CTkEntry(master=self.frame_yf, width=50,
-                                                        textvariable=self.yf_valor)
+                                               textvariable=self.yf_valor)
         self.input_yf.grid(row=0, column=1, padx=(0, 20), pady=20, sticky='w')
 
         self.yf_label = customtkinter.CTkLabel(master=self.frame_yf, text='yf', anchor='w',
-                                                font=customtkinter.CTkFont(size=14, weight='normal'))
+                                               font=customtkinter.CTkFont(size=14, weight='normal'))
         self.yf_label.grid(row=0, column=2, padx=20, pady=20)
 
         self.frame_offset_x = customtkinter.CTkFrame(master=self.tabview.tab('Perspectiva'))
@@ -258,15 +258,15 @@ class PainelDeControle(customtkinter.CTk):
         self.offset_x_valor = tkinter.DoubleVar()
 
         self.slider_offset_x = customtkinter.CTkSlider(master=self.frame_offset_x, from_=0, to=1280,
-                                                          variable=self.offset_x_valor, width=200,
-                                                          number_of_steps=1280)
+                                                       variable=self.offset_x_valor, width=200,
+                                                       number_of_steps=1280)
         self.slider_offset_x.grid(row=0, column=0, padx=20, pady=20, sticky='w')
         self.input_offset_x = customtkinter.CTkEntry(master=self.frame_offset_x, width=50,
-                                                        textvariable=self.offset_x_valor)
+                                                     textvariable=self.offset_x_valor)
         self.input_offset_x.grid(row=0, column=1, padx=(0, 20), pady=20, sticky='w')
 
         self.offset_x_label = customtkinter.CTkLabel(master=self.frame_offset_x, text='offset x', anchor='w',
-                                                font=customtkinter.CTkFont(size=14, weight='normal'))
+                                                     font=customtkinter.CTkFont(size=14, weight='normal'))
         self.offset_x_label.grid(row=0, column=2, padx=20, pady=20)
 
         # Valores padrão
