@@ -12,12 +12,12 @@ from Configuracoes import *
 
 configuracoes = Configuracoes()
 
-comunicacao_arduino = configuracoes.comunicacao_serial_habilitada
+comunicacao_arduino = False
 
 port = configuracoes.arduino_port
 rate = configuracoes.arduino_rate
 
-if configuracoes.comunicacao_serial_habilitada:
+if comunicacao_arduino:
     serial_arduino = serial.Serial(port, rate)
 
 dist_max_entre_faixas = []
@@ -32,7 +32,7 @@ class FaixasDeTransito:
 
     def __init__(self):
         self.fator_reducao = configuracoes.fator_reducao
-        self.birds_view = configuracoes.perspectiva_habilitada
+        self.birds_view = True
 
         self.tratamento = TratamentoDeImagem()
         self.transformacao = TransformacaoDePerspectiva()
@@ -101,9 +101,9 @@ class FaixasDeTransito:
                 dist_max_entre_faixas.append(dist_entre_faixas)
 
         elif faixa_esquerda == 0 or faixa_direita == 0:
-            dist_max = int(np.nanmax(dist_max_entre_faixas))
+            if len(dist_max_entre_faixas) == qtd_max_dados:
+                dist_max = int(np.nanmax(dist_max_entre_faixas))
 
-            if dist_max:
                 offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita], dist_max)
             else:
                 offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
@@ -286,7 +286,7 @@ class FaixasDeTransito:
 
             return offset
 
-    def calcular_histograma_pista(self, img, altura_min, altura_max):
+    def calcular_histograma_pista(self, img, altura_min, altura_max, debug=True):
         """
         Calcula o histograma das projeções verticais da imagem em uma faixa de altura específica.
 
@@ -300,9 +300,10 @@ class FaixasDeTransito:
         """
         histograma = np.sum(img[int(altura_min):int(altura_max), :], axis=0)
 
-        # plt.plot(histograma)
-        # plt.title('Histograma')
-        # plt.show()
+        if debug:
+            plt.plot(histograma)
+            plt.title('Histograma')
+            plt.show()
 
         return histograma
 

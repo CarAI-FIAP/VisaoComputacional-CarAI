@@ -7,7 +7,7 @@ from ultralytics import NAS
 from TratamentoDeImagem import *
 
 # Carregamento do modelo
-modelo_yolo = YOLO('models/yolov8n.pt')
+modelo_yolo = YOLO('models/yolov8m.pt')
 #modelo_yolo = NAS('yolo_nas_s.pt')
 
 class SinaisDeTransito:
@@ -58,7 +58,7 @@ class SinaisDeTransito:
                     print('Raio da placa: ', raio_placa)
 
                     # Verificar se a placa está próxima e de frente
-                    if raio_placa >= 100 and porcentagem_vermelho > 25:
+                    if raio_placa >= 20 and porcentagem_vermelho > 25:
                         print('Pare!')
 
                 if label_identificado == 9:

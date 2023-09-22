@@ -126,7 +126,7 @@ def main():
         visaoComputacional = VisaoComputacional()
         visaoComputacional.processar_video_faixas(video_faixas)
         # visaoComputacional.inicializar_painel_de_controle()
-        # visaoComputacional.processar_video_sinalizacoes(video_objetos)
+        #visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
 if __name__ == '__main__':
     main()
