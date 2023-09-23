@@ -10,11 +10,11 @@ class TransformacaoDePerspectiva:
         self.configuracoes = Configuracoes()
 
         # Definição dos valores fixos para os deslocamentos e coordenadas dos pontos de origem
-        self.xfd = (self.configuracoes.xfd_valor // self.configuracoes.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
+        self.xfd = (550 // self.configuracoes.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
         self.yf = (self.configuracoes.yf_valor // self.configuracoes.fator_reducao)     # Posição vertical dos pontos de origem
         self.offset_x = self.configuracoes.offset_x                                     # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
 
-        self.perspectiva_retangular = True
+        self.perspectiva_retangular = False
 
     def desenhar_roi(self, img, cor_linha=(0, 255, 0), tam_linha=2):
         """

@@ -73,7 +73,6 @@ class FaixasDeTransito:
             pontos, coord_faixas, angulos, _ = self.calcular_resultados_faixas(img_filtrada, img_filtrada.shape[0] - (
                         200 // self.fator_reducao))
         else:
-            print(len(angulo_padrao_lista))
             if len(angulo_padrao_lista) == qtd_max_dados:
                 angulo_padrao = int(np.mean(angulo_padrao_lista))
 
@@ -87,10 +86,14 @@ class FaixasDeTransito:
                 if len(angulo_padrao_lista) < qtd_max_dados and coord_faixas[0] != 0 and coord_faixas[1] != 0:
                     angulo_padrao_lista.append(np.nanmin(angulos_sem_correcao))
 
-        if len(angulos) < 1:
-            angulo = None
+        if len(angulos) == 2:
+            angulo = angulos[0] + (-angulos[1])
+
+        elif len(angulos) == 1:
+            angulo = angulos[0]
+
         else:
-            angulo = int(np.nanmin(angulos))
+            angulo = 1999
 
         faixa_esquerda, faixa_direita = coord_faixas
 
@@ -204,7 +207,7 @@ class FaixasDeTransito:
 
                 try:
                     # angulo_ABP = math.degrees(math.atan(AP / BP))
-                    angulo_BAP = math.degrees(math.atan(BP / AP))
+                    angulo_BAP = int(math.degrees(math.atan(BP / AP)))
                     # print('Ângulo BAP:', angulo_BAP)
 
                     if x_esquerda != 0 and x_direita != 0:
@@ -286,7 +289,7 @@ class FaixasDeTransito:
 
             return offset
 
-    def calcular_histograma_pista(self, img, altura_min, altura_max, debug=True):
+    def calcular_histograma_pista(self, img, altura_min, altura_max, debug=False):
         """
         Calcula o histograma das projeções verticais da imagem em uma faixa de altura específica.
 
