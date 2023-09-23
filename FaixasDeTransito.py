@@ -157,10 +157,12 @@ class FaixasDeTransito:
                     cv2.imshow('Imagem ROI', img_roi)
 
             else:
-                cv2.imshow('Resultados', self.tratamento.redimensionar_imagem(img_resultados, 280))
-
                 if self.birds_view:
+                    cv2.imshow('Resultados', self.tratamento.redimensionar_imagem(img_resultados, 450))
                     cv2.imshow('Imagem ROI', self.tratamento.redimensionar_imagem(img_roi, 280))
+
+                else:
+                    cv2.imshow('Resultados', self.tratamento.redimensionar_imagem(img_resultados, 280))
 
         else:
             cv2.destroyAllWindows()
@@ -231,7 +233,7 @@ class FaixasDeTransito:
 
         return pontos, coord_faixas, angulos, angulos_sem_correcao
 
-    def calcular_offset(self, img, pontos, dist_max_entre_faixas=533, debug=False):
+    def calcular_offset(self, img, pontos, dist_max_entre_faixas=212, debug=False):
         posicao_carro = img.shape[1] / 2
 
         ponto_esquerda, ponto_direita = pontos

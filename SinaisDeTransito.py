@@ -16,9 +16,12 @@ class SinaisDeTransito:
     def __init__(self):
         self.tratamento = TratamentoDeImagem()
 
-    def classificar_objetos(self, img):
+        self.semaforo = 0
+        self.placa_pare = 0
+
+    def classificar_objetos(self, img, debug=True):
         # Roda o modelo YOLOv8 treinado na imagem
-        resultados = modelo_yolo(img)
+        resultados = modelo_yolo(img, verbose=False)
 
         for resultado in resultados:
             boxes = resultado.boxes.cpu().numpy()
@@ -51,15 +54,19 @@ class SinaisDeTransito:
 
                     # Calcular a porcentagem de pixels vermelhos na placa para saber se ela está de frente
                     porcentagem_vermelho = int((np.count_nonzero(mask_red) / total_pixels) * 100)
-                    print('Pixels vermelhos (%):', porcentagem_vermelho)
-
                     raio_placa = int((x2 - x1) / 2)
 
-                    print('Raio da placa: ', raio_placa)
+                    if debug:
+                        print('\nStatus da placa pare:', self.placa_pare)
+                        print('Pixels vermelhos na img (%):', porcentagem_vermelho)
+                        print('Raio da placa: ', raio_placa)
 
                     # Verificar se a placa está próxima e de frente
-                    if raio_placa >= 20 and porcentagem_vermelho > 25:
-                        print('Pare!')
+                    if raio_placa >= 40 and porcentagem_vermelho > 25:
+                        self.placa_pare = 1
+
+                    else:
+                        self.placa_pare = 0
 
                 if label_identificado == 9:
                     x1, y1, x2, y2 = box.xyxy[0]  # Coordenadas do retângulo do semáforo detectado
@@ -74,10 +81,17 @@ class SinaisDeTransito:
                     # Classificação da cor do semáforo -> luz acesa possui mais pixels
                     luz_acesa = np.argmax(luz_semaforo_qtd_pixels) # Retorna o índice do maior valor do array
                     cores = ['vermelho', 'amarelo', 'verde']
-                    print('Semaforo', cores[luz_acesa])
+                    self.semaforo = luz_acesa + 1
+
+                    if debug:
+                        print('\nStatus do semáforo:', self.semaforo)
+                        print('Semáforo', cores[luz_acesa])
+
+                else:
+                    self.semaforo = 0
 
         img_com_resultados = resultados[0].plot()
 
-        cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 350))
+        cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 450))
 
 # © 2023 CarAI.

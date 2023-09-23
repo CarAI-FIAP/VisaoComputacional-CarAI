@@ -121,7 +121,7 @@ def main():
     else:
         video_faixas = 'assets/videos_teste/pista_completa.mp4'
 
-        video_objetos = 'assets/videos_teste/semaforo_vermelho.mp4'
+        video_objetos = 'assets/videos_teste/placa_pare1.mp4'
 
         visaoComputacional = VisaoComputacional()
         visaoComputacional.processar_video_faixas(video_faixas)
