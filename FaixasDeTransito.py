@@ -29,9 +29,7 @@ class FaixasDeTransito:
         self.fator_reducao = self.configuracoes.fator_reducao
         self.birds_view = False
 
-        self.curvas = []
-
-    def identificar_faixas(self, img, debug=True, prints=False):
+    def identificar_faixas(self, img, debug=True, prints=True):
         global offset
 
         img_copia = np.copy(img)
@@ -70,10 +68,14 @@ class FaixasDeTransito:
                 if len(angulo_padrao_lista) < qtd_max_dados and coord_faixas[0] != 0 and coord_faixas[1] != 0:
                     angulo_padrao_lista.append(np.nanmin(angulos_sem_correcao))
 
-        if len(angulos) < 1:
-            angulo = 1999
+        if len(angulos) == 2:
+            angulo = angulos[0] + (-angulos[1])
+
+        elif len(angulos) == 1:
+            angulo = angulos[0]
+
         else:
-            angulo = int(np.nanmin(angulos))
+            angulo = 1999
 
         faixa_esquerda, faixa_direita = coord_faixas
 
@@ -83,16 +85,16 @@ class FaixasDeTransito:
             if len(dist_max_entre_faixas) < qtd_max_dados:
                 dist_max_entre_faixas.append(dist_entre_faixas)
 
-            elif faixa_esquerda == 0 or faixa_direita == 0:
+        elif faixa_esquerda == 0 or faixa_direita == 0:
+            if len(dist_max_entre_faixas) == qtd_max_dados:
                 dist_max = int(np.nanmax(dist_max_entre_faixas))
 
-                if dist_max:
-                    offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita], dist_max)
-                else:
-                    offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
-
+                offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita], dist_max)
             else:
-                offset = 2000
+                offset = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
+
+        else:
+            offset = 2000
 
         # with open('valores_offset.txt', 'a') as arquivo:
         # arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset} | {angulo}\n')
@@ -185,15 +187,13 @@ class FaixasDeTransito:
 
                 try:
                     # angulo_ABP = math.degrees(math.atan(AP / BP))
-                    angulo_BAP = math.degrees(math.atan(BP / AP))
+                    angulo_BAP = int(math.degrees(math.atan(BP / AP)))
                     # print('Ângulo BAP:', angulo_BAP)
 
                     if x_esquerda != 0 and x_direita != 0:
                         angulos_sem_correcao.append(angulo_BAP)
-                        #print('angulo_BAP', angulo_BAP)
 
                     if not (self.birds_view):
-                        #print('angulo_padrao_medio', angulo_padrao_medio)
                         angulo_BAP -= angulo_padrao_medio
                         angulo_BAP = abs(angulo_BAP)
 
