@@ -8,12 +8,14 @@ from TratamentoDeImagem import *
 from FaixasDeTransito import *
 from SinaisDeTransito import *
 from Configuracoes import *
+from PainelDeControle import *
 
 class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
         self.configuracoes = Configuracoes()
+        self.painelDeControle = PainelDeControle()
 
         self.camera_faixas_on = False
         self.camera_sinalizacao_on = False
@@ -22,7 +24,7 @@ class VisaoComputacional:
 
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito()
-        self.sinalizacao = SinaisDeTransito()  # Comentar p/ diminuir a demora na inicialização
+        #self.sinalizacao = SinaisDeTransito()  # Comentar p/ diminuir a demora na inicialização
 
     def processar_video_faixas(self, caminho_video=''):
         if self.camera_faixas_on:
@@ -125,7 +127,7 @@ def main():
 
         visaoComputacional = VisaoComputacional()
         visaoComputacional.processar_video_faixas(video_faixas)
-        # visaoComputacional.inicializar_painel_de_controle()
+        #visaoComputacional.painelDeControle.mainloop()
         #visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
 if __name__ == '__main__':
