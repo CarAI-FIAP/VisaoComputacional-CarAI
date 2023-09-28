@@ -7,20 +7,19 @@ from mpi4py import MPI
 from TratamentoDeImagem import *
 from FaixasDeTransito import *
 from SinaisDeTransito import *
-from Configuracoes import *
-from PainelDeControle import *
 
 class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
-        self.configuracoes = Configuracoes()
-        self.painelDeControle = PainelDeControle()
+        #self.configuracoes = Configuracoes()
 
-        self.camera_faixas_on = False
+        self.camera_faixas_on = True
         self.camera_sinalizacao_on = False
         self.video_largura = 1280
         self.video_altura = 720
+
+        self.fator_reducao = 3
 
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito()
@@ -33,6 +32,7 @@ class VisaoComputacional:
             video.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_largura)
             video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_altura)
             video.set(cv2.CAP_PROP_FPS, 30)
+            video.set(cv2.CAP_PROP_AUTOFOCUS, 0)
             video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
         else:
@@ -42,7 +42,8 @@ class VisaoComputacional:
             video_nao_acabou, frame = video.read()
 
             if video_nao_acabou:
-                frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.configuracoes.fator_reducao)
+                #print(self.configuracoes.canal_l_min.get())
+                frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
 
                 self.faixas.identificar_faixas(frame_reduzido)
 
@@ -69,7 +70,7 @@ class VisaoComputacional:
             video_nao_acabou, frame = video.read()
 
             if video_nao_acabou:
-                frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.configuracoes.fator_reducao)
+                frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
 
                 self.sinalizacao.classificar_objetos(frame_reduzido)
 
@@ -99,8 +100,9 @@ def main():
             comm.bcast(video_objetos, root=0)
 
             # Inicialize o painel de controle em um processo separado
-            if rank == 0:
-                visaoComputacional.configuracoes.inicializar_painel_de_controle()
+            #if rank == 0:
+                #painelDeControle = PainelDeControle()
+                #painelDeControle.mainloop()
 
             # Espere que os processos filhos terminem
             for i in range(1, comm.Get_size()):
@@ -127,8 +129,10 @@ def main():
 
         visaoComputacional = VisaoComputacional()
         visaoComputacional.processar_video_faixas(video_faixas)
-        #visaoComputacional.painelDeControle.mainloop()
         #visaoComputacional.processar_video_sinalizacoes(video_objetos)
+
+        #painelDeControle = PainelDeControle()
+        #painelDeControle.mainloop()
 
 if __name__ == '__main__':
     main()

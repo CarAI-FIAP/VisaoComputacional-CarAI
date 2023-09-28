@@ -7,12 +7,13 @@ class TransformacaoDePerspectiva:
     # Classe para realizar transformações de perspectiva na imagem.
 
     def __init__(self):
-        self.configuracoes = Configuracoes()
+        #self.configuracoes = Configuracoes()
+        self.fator_reducao = 3
 
         # Definição dos valores fixos para os deslocamentos e coordenadas dos pontos de origem
-        self.xfd = (550 // self.configuracoes.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
-        self.yf = (self.configuracoes.yf_valor // self.configuracoes.fator_reducao)     # Posição vertical dos pontos de origem
-        self.offset_x = self.configuracoes.offset_x                                     # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
+        self.xfd = (450 // self.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
+        self.yf = (450 // self.fator_reducao)     # Posição vertical dos pontos de origem
+        self.offset_x = 0                                  # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
 
         self.perspectiva_retangular = False
 

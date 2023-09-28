@@ -8,17 +8,16 @@ import time
 
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
-from Configuracoes import *
 
-configuracoes = Configuracoes()
+#configuracoes = Configuracoes()
 
-comunicacao_arduino = False
+comunicacao_arduino = True
 
-port = configuracoes.arduino_port
-rate = configuracoes.arduino_rate
+port ='COM15'
+rate = 9600
 
 if comunicacao_arduino:
-    serial_arduino = serial.Serial(port, rate)
+   serial_arduino = serial.Serial(port, rate)
 
 class FaixasDeTransito:
     # Classe para classificar as faixas de trânsito.
@@ -27,7 +26,7 @@ class FaixasDeTransito:
         self.tratamento = TratamentoDeImagem()
         self.transformacao = TransformacaoDePerspectiva()
 
-        self.fator_reducao = configuracoes.fator_reducao
+        self.fator_reducao = 3
         self.birds_view = True
 
         self.dist_max_entre_faixas_lista = []
@@ -43,11 +42,13 @@ class FaixasDeTransito:
         angulo, esquerda_x, direita_x, offset = dados
         dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset}\n'
 
+        #print(dados_enviar)
+
         serial_arduino.write(dados_enviar.encode())
         time.sleep(0.01)
 
         if debug:
-            dados_recebidos = serial_arduino.readline().decode('utf-8').strip()
+            dados_recebidos = serial_arduino.readline().decode().strip()
             print(f'\n{dados_recebidos}', end='')
 
     def identificar_faixas(self, img, debug=True, prints=True):
@@ -73,10 +74,10 @@ class FaixasDeTransito:
                         200 // self.fator_reducao))
         else:
             if len(self.angulo_padrao_lista) == self.qtd_max_dados:
-                angulo_padrao = int(np.mean(self.angulo_padrao_lista))
+                self.angulo_padrao = int(np.mean(self.angulo_padrao_lista))
 
                 pontos, coord_faixas, angulos, _ = self.calcular_resultados_faixas(img_filtrada,
-                            img_filtrada.shape[0] - (200 // self.fator_reducao), angulo_padrao)
+                            img_filtrada.shape[0] - (200 // self.fator_reducao))
 
             else:
                 pontos, coord_faixas, angulos, angulos_sem_correcao = self.calcular_resultados_faixas(img_filtrada,
@@ -85,8 +86,11 @@ class FaixasDeTransito:
                 if len(self.angulo_padrao_lista) < self.qtd_max_dados and coord_faixas[0] != 0 and coord_faixas[1] != 0:
                     self.angulo_padrao_lista.append(np.nanmin(angulos_sem_correcao))
 
-        if len(angulos) > 0:
-            angulo = np.mean(angulos)
+        if len(angulos) == 2:
+            angulo = (angulos[0] + angulos[1]) / 2
+
+        elif (len(angulos) == 1):
+            angulo = angulos[0]
 
         else:
             angulo = 1999
@@ -95,7 +99,7 @@ class FaixasDeTransito:
 
         if len(self.dist_max_entre_faixas_lista) == self.qtd_max_dados:
             self.dist_max_entre_faixas = int(np.nanmax(self.dist_max_entre_faixas_lista))
-            print('dist_max:', self.dist_max_entre_faixas)
+            #print('dist_max:', self.dist_max_entre_faixas)
 
         if faixa_esquerda != 0 and faixa_direita != 0:
             offset, dist_entre_faixas = self.calcular_offset(img, [faixa_esquerda, faixa_direita])
@@ -113,6 +117,7 @@ class FaixasDeTransito:
         # arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset} | {angulo}\n')
 
         dados = (angulo, faixa_esquerda, faixa_direita, offset)
+        print(dados)
 
         if comunicacao_arduino:
             self.enviar_dados_para_arduino(dados)
@@ -162,13 +167,12 @@ class FaixasDeTransito:
         else:
             cv2.destroyAllWindows()
 
-    def calcular_resultados_faixas(self, img, coordenada_min_y, debug=True):
+    def calcular_resultados_faixas(self, img, coordenada_min_y, debug=False):
         y_faixas = coordenada_min_y
         y90 = coordenada_min_y + (120 // self.fator_reducao)
 
         histograma = self.calcular_histograma_pista(img, y_faixas, y_faixas + 10)
         x_esquerda, x_direita = self.calcular_picos_do_histograma(histograma)
-
 
         if x_esquerda != 0 and x_direita != 0:
             if x_esquerda > (img.shape[1] // 2):
@@ -199,13 +203,13 @@ class FaixasDeTransito:
             pontos.append(pontos_triangulo_direita)
 
         # Caso a curva à direita invada o outro lado
-        if x_esquerda == 0 and x_direita_B == 0 and x_direita != 0 and x_esquerda_B > 20:
+        if x_esquerda == 0 and x_direita_B == 0 and x_direita != 0 and x_esquerda_B !=  0:
             pontos_triangulo_curva_direita = [(int(x_direita), int(y_faixas)), (int(x_esquerda_B), int(y90)),
                                         (int(x_direita), int(y90))]
             pontos.append(pontos_triangulo_curva_direita)
 
         # Caso a curva à esquerda invada o outro lado
-        if x_direita == 0 and x_esquerda_B == 0 and x_esquerda != 0 and x_direita_B > 20:
+        if x_direita == 0 and x_esquerda_B == 0 and x_esquerda != 0 and x_direita_B != 0:
             pontos_triangulo_curva_esquerda = [(int(x_esquerda), int(y_faixas)), (int(x_direita_B), int(y90)),
                                         (int(x_esquerda), int(y90))]
             pontos.append(pontos_triangulo_curva_esquerda)
@@ -234,17 +238,17 @@ class FaixasDeTransito:
                         angulo_BAP -= self.angulo_padrao
                         angulo_BAP = abs(angulo_BAP)
 
-                    if angulo_BAP != 0:
-                        if ponto_B[0] > ponto_A[0]:
-                            angulos.append(-angulo_BAP)
-                        else:
-                            angulos.append(angulo_BAP)
+                    #if angulo_BAP != 0:
+                    if ponto_B[0] < ponto_A[0]:
+                        angulos.append(-angulo_BAP)
+                    else:
+                        angulos.append(angulo_BAP)
 
                 except ZeroDivisionError:
                     return
 
-        else:
-            print('Nenhuma faixa foi encontrada. Ajuste os parâmetros para identificá-las!')
+        #else:
+            #print('Nenhuma faixa foi encontrada. Ajuste os parâmetros para identificá-las!')
 
         return pontos, coord_faixas, angulos, angulos_sem_correcao
 
