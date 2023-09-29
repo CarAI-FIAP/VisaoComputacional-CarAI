@@ -14,7 +14,7 @@ class VisaoComputacional:
     def __init__(self):
         #self.configuracoes = Configuracoes()
 
-        self.camera_faixas_on = True
+        self.camera_faixas_on = False
         self.camera_sinalizacao_on = False
         self.video_largura = 1280
         self.video_altura = 720
@@ -23,12 +23,12 @@ class VisaoComputacional:
 
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito()
-        #self.sinalizacao = SinaisDeTransito()  # Comentar p/ diminuir a demora na inicialização
+        self.sinalizacao = SinaisDeTransito()  # Comentar p/ diminuir a demora na inicialização
 
     def processar_video_faixas(self, caminho_video=''):
         if self.camera_faixas_on:
-            video = cv2.VideoCapture(-0, cv2.CAP_DSHOW)
-
+            video = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+  
             video.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_largura)
             video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_altura)
             video.set(cv2.CAP_PROP_FPS, 30)
@@ -100,9 +100,9 @@ def main():
             comm.bcast(video_objetos, root=0)
 
             # Inicialize o painel de controle em um processo separado
-            #if rank == 0:
-                #painelDeControle = PainelDeControle()
-                #painelDeControle.mainloop()
+            # if rank == 0:
+            # painelDeControle = PainelDeControle()
+            # painelDeControle.mainloop()
 
             # Espere que os processos filhos terminem
             for i in range(1, comm.Get_size()):
@@ -117,8 +117,8 @@ def main():
                 visaoComputacional = VisaoComputacional()
                 visaoComputacional.processar_video_faixas(video_faixas)
 
-            #elif rank == 2:
-                # Processo filho 2: processar_video_faixas
+            # elif rank == 2:
+            # Processo filho 2: processar_video_faixas
             #    visaoComputacional = VisaoComputacional()
             #    visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
@@ -129,10 +129,10 @@ def main():
 
         visaoComputacional = VisaoComputacional()
         visaoComputacional.processar_video_faixas(video_faixas)
-        #visaoComputacional.processar_video_sinalizacoes(video_objetos)
+        # visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
-        #painelDeControle = PainelDeControle()
-        #painelDeControle.mainloop()
+        # painelDeControle = PainelDeControle()
+        # painelDeControle.mainloop()
 
 if __name__ == '__main__':
     main()

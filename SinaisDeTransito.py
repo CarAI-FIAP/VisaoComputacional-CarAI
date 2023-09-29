@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ultralytics import YOLO
 from ultralytics import NAS
+import serial
+import time
 
 from TratamentoDeImagem import *
 
@@ -65,9 +67,6 @@ class SinaisDeTransito:
                     if raio_placa >= 40 and porcentagem_vermelho > 25:
                         self.placa_pare = 1
 
-                    else:
-                        self.placa_pare = 0
-
                 if label_identificado == 9:
                     x1, y1, x2, y2 = box.xyxy[0]  # Coordenadas do retângulo do semáforo detectado
                     semaforo_identificado = img[int(y1):int(y2), int(x1):int(x2)]  # Recorta a região do semáforo
@@ -87,10 +86,12 @@ class SinaisDeTransito:
                         print('\nStatus do semáforo:', self.semaforo)
                         print('Semáforo', cores[luz_acesa])
 
-                else:
-                    self.semaforo = 0
-
         img_com_resultados = resultados[0].plot()
+
+        if comunicacao_arduino:
+            dados = (self.semaforo, self.placa_pare)
+            print(dados)
+            self.enviar_dados_para_arduino(dados)
 
         cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 450))
 

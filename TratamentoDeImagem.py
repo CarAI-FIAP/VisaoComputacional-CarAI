@@ -89,10 +89,10 @@ class TratamentoDeImagem:
         canal_v = hsv[:,:,2]
         canal_r = bgr[:,:,2]
 
-        faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0)
+        faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0) # 0.78
         #faixa_direita = cv2.threshold(canal_l, (120, 255), cv2.THRESH_BINARY)
         #faixa_direita = cv2.GaussianBlur(faixa_direita, (3, 3))
-        faixa_direita &= self.threshold_absoluto(canal_s, 50, 255)
+        #faixa_direita &= self.threshold_absoluto(canal_s, 40, 255) # 40
         #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
         #faixa_direita[:,:750] = 0
 
