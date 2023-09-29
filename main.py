@@ -14,7 +14,7 @@ class VisaoComputacional:
     def __init__(self):
         #self.configuracoes = Configuracoes()
 
-        self.camera_faixas_on = False
+        self.camera_faixas_on = True
         self.camera_sinalizacao_on = False
         self.video_largura = 1280
         self.video_altura = 720

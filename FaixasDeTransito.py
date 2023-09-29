@@ -11,9 +11,9 @@ from TransformacaoDePerspectiva import *
 
 #configuracoes = Configuracoes()
 
-comunicacao_arduino = False
+comunicacao_arduino = True
 
-port ='COM10' #15
+port ='COM15' #15
 rate = 9600
 
 if comunicacao_arduino:
@@ -43,7 +43,7 @@ class FaixasDeTransito:
 
     def enviar_dados_para_arduino(self, dados, debug=False):
         angulo, esquerda_x, direita_x, offset, angulo_offset = dados
-        dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset},{angulo_offset}\n'
+        dados_enviar = f'{angulo_offset}\n'
 
         print(dados_enviar)
 
@@ -131,10 +131,10 @@ class FaixasDeTransito:
             out_img = np.copy(img)
 
             if prints:
-                print('\nOffset: ', offset)
-                print('Ângulos: ', angulos)
-                print('Ângulo ABP:', angulo)
-                print('Ângulo offset:', angulo_offset)
+                #print('\nOffset: ', offset)
+                #print('Ângulos: ', angulos)
+                #print('Ângulo ABP:', angulo)
+                print('\nÂngulo offset:', angulo_offset)
                 print('Esquerda (x): ', faixa_esquerda)
                 print('Direita (x): ', faixa_direita)
 
@@ -274,7 +274,7 @@ class FaixasDeTransito:
             AB = math.sqrt((ponto_B[0] - ponto_A[0]) ** 2 + (ponto_B[1] - ponto_A[1]) ** 2)
 
             try:
-                angulo_APB = int(math.degrees(math.atan2(AB, BP)))
+                angulo_APB = int(math.degrees(math.atan(AB / BP)))
 
                 if ponto_B[0] < ponto_A[0]:
                     angulo_APB *= -1
