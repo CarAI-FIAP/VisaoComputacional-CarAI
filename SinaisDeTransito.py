@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ultralytics import YOLO
 from ultralytics import NAS
+import serial
+import time
 
 from TratamentoDeImagem import *
 
 # Carregamento do modelo
-modelo_yolo = YOLO('models/yolov8n.pt')
+modelo_yolo = YOLO('models/yolov8m.pt')
 #modelo_yolo = NAS('yolo_nas_s.pt')
 
 class SinaisDeTransito:
@@ -19,7 +21,7 @@ class SinaisDeTransito:
         self.semaforo = 0
         self.placa_pare = 0
 
-    def classificar_objetos(self, img, debug=True):
+    def classificar_objetos(self, img, debug=False):
         # Roda o modelo YOLOv8 treinado na imagem
         resultados = modelo_yolo(img, verbose=False)
 
@@ -54,22 +56,16 @@ class SinaisDeTransito:
 
                     # Calcular a porcentagem de pixels vermelhos na placa para saber se ela está de frente
                     porcentagem_vermelho = int((np.count_nonzero(mask_red) / total_pixels) * 100)
-
                     raio_placa = int((x2 - x1) / 2)
 
                     if debug:
-                        print('Pixels vermelhos (%):', porcentagem_vermelho)
+                        print('\nStatus da placa pare:', self.placa_pare)
+                        print('Pixels vermelhos na img (%):', porcentagem_vermelho)
                         print('Raio da placa: ', raio_placa)
 
                     # Verificar se a placa está próxima e de frente
-                    if raio_placa >= 50 and porcentagem_vermelho > 25:
+                    if raio_placa >= 40 and porcentagem_vermelho > 25:
                         self.placa_pare = 1
-
-                        if debug:
-                            print('Pare!')
-
-                    else:
-                        self.placa_pare = 0
 
                 if label_identificado == 9:
                     x1, y1, x2, y2 = box.xyxy[0]  # Coordenadas do retângulo do semáforo detectado
@@ -87,15 +83,12 @@ class SinaisDeTransito:
                     self.semaforo = luz_acesa + 1
 
                     if debug:
+                        print('\nStatus do semaforo:', self.semaforo)
                         print('Semaforo', cores[luz_acesa])
-                        print(self.semaforo)
-
-                else:
-                    self.semaforo = 0
 
         img_com_resultados = resultados[0].plot()
 
-        cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 350))
+        cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 450))
 
         return self.placa_pare, self.semaforo
 

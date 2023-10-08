@@ -1,34 +1,49 @@
+from mpi4py import MPI
 import serial
 import time
 
-# Definindo parâmetros de conexão
-port = 'COM6'   # conferir porta que o arduino está conectado
-rate = 115200
-conn = serial.Serial(port, rate)
-time.sleep(2)
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
-while True:
-    # Input do usuário
-    grau = input(str("Informe o grau desejado (X para sair): ")).upper()
-    print(grau)
+ser = None  # Inicializa ser como None em todos os processos
 
-    data = {
-        'angulo_D': 2,
-        'angulo_E': 2,
-        'offset': 10,
-    }
+if rank == 0:
+    ser = serial.Serial('COM4', 9600, timeout=1)
 
-    if grau == "X":
-        break
+def write_to_serial(data):
+    if ser is not None:
+        ser.write(data.encode())
+        time.sleep(0.01)
 
-    else:
-        grau = grau.encode('utf-8')
+        resposta_arduino = ser.readline().decode().strip()
+        print(resposta_arduino)
 
-        # Comunicação serial
-        conn.write(grau)
-        time.sleep(1)
+try:
+    while True:
+        if rank == 0:
+            angulo = 90
+            esquerda_x = 64
+            direita_x = 356
+            offset = 11
+            angulo_offset = 14
 
-    # Resetando a variável dado
-    conn.write(grau)
+            dados_a_enviar = f'A{angulo},{esquerda_x},{direita_x},{offset},{angulo_offset}\n'
 
-conn.close()
+        elif rank == 1:
+            placa_pare = 1
+            semaforo = 3
+
+            dados_a_enviar = f'B{placa_pare},{semaforo}\n'
+
+        comm.Barrier()  # Sincroniza todos os processos antes de escrever
+
+        write_to_serial(dados_a_enviar)
+
+        comm.Barrier()  # Sincroniza todos os processos depois de escrever
+
+        # Alternar entre os processos
+        rank = 1 - rank
+
+except KeyboardInterrupt:
+    if rank == 0:
+        ser.close()

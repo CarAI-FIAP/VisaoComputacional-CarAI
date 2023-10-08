@@ -3,6 +3,8 @@ import cv2
 import math
 import matplotlib.pyplot as plt
 from mpi4py import MPI
+import serial
+import time
 
 from TratamentoDeImagem import *
 from FaixasDeTransito import *
@@ -12,13 +14,21 @@ from PainelDeControle import *
 
 configuracoes = Configuracoes()
 
-comunicacao_arduino = False
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
-port = 'COM9'
+comunicacao_arduino_on = True
+
+port = 'COM4'
 rate = 9600
 
-if comunicacao_arduino:
-    serial_arduino = serial.Serial(port, rate)
+if comunicacao_arduino_on:
+    if rank == 0:
+        port = 'COM4'  # 15
+        rate = 9600
+
+        serial_arduino = serial.Serial(port, rate, timeout=0.1)
+
 
 class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
@@ -38,6 +48,7 @@ class VisaoComputacional:
         self.esquerda_x = 0
         self.direita_x = 0
         self.offset = 2000
+        self.angulo_offset = 2000
         self.placa_pare = 0
         self.semaforo = 0
 
@@ -46,9 +57,11 @@ class VisaoComputacional:
     def fechar_conexao_arduino(self):
         serial_arduino.close()
 
-    def enviar_dados_para_arduino(self, dados, debug=False):
-        angulo, esquerda_x, direita_x, offset, placa_pare, semaforo = dados
-        dados_enviar = f'{angulo},{esquerda_x},{direita_x},{offset},{placa_pare},{semaforo}\n'
+    def enviar_dados_para_arduino(self, dados, debug=True):
+        angulo, angulo_ffset, offset, esquerda_x, direita_x, placa_pare, semaforo = dados
+        valor_descartavel = 0
+
+        dados_enviar = f'{angulo},{angulo_ffset},{offset},{esquerda_x},{direita_x},{valor_descartavel},{placa_pare},{semaforo}\n'
 
         serial_arduino.write(dados_enviar.encode())
         time.sleep(0.01)
@@ -84,28 +97,25 @@ class VisaoComputacional:
             video_faixas_nao_acabou, frame_faixas = video_faixas.read()
             video_sinalizacao_nao_acabou, frame_sinalizacao = video_sinalizacao.read()
 
-            if video_faixas_nao_acabou:
+            if video_faixas_nao_acabou or video_sinalizacao_nao_acabou:
                 frame_faixas_reduzido = self.tratamento.redimensionar_por_fator(frame_faixas, self.configuracoes.fator_reducao)
-
-                self.angulo, self.esquerda_x, self.direita_x, self.offset = self.faixas.identificar_faixas(frame_faixas_reduzido)
-
-            if video_sinalizacao_nao_acabou:
                 frame_sinalizacao_reduzido = self.tratamento.redimensionar_por_fator(frame_sinalizacao, self.configuracoes.fator_reducao)
 
+                self.angulo, self.angulo_offset, self.offset, self.esquerda_x, self.direita_x  = self.faixas.identificar_faixas(frame_faixas_reduzido)
                 self.placa_pare, self.semaforo = self.sinalizacao.classificar_objetos(frame_sinalizacao_reduzido)
 
             self.dados.append(self.angulo)
+            self.dados.append(self.angulo_offset)
+            self.dados.append(self.offset)
             self.dados.append(self.esquerda_x)
             self.dados.append(self.direita_x)
-            self.dados.append(self.offset)
             self.dados.append(self.placa_pare)
             self.dados.append(self.semaforo)
 
-            if len(self.dados) == 6:
-                print(self.dados)
+            if len(self.dados) == 7:
                 sys.stdout.flush()
 
-                if comunicacao_arduino:
+                if comunicacao_arduino_on:
                     self.enviar_dados_para_arduino(self.dados)
 
                 self.dados.clear()
@@ -122,30 +132,18 @@ def main():
     processar_tudo = True
 
     if processar_tudo:
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()  # ID ou classificação única dentro do comunicador
-
         if rank == 0:
-            # Processo mestre
             video_faixas = 'assets/videos_teste/pista_completa.mp4'
-            video_objetos = 'assets/videos_teste/placa_pare1.mp4'
+            video_objetos = 'assets/videos_teste/semaforo.mp4'
 
             visaoComputacional = VisaoComputacional()
+            visaoComputacional.processar_videos(video_faixas, video_objetos)
 
-            comm.bcast(video_faixas, root=0)
-            comm.bcast(video_objetos, root=0)
-
-            if rank == 0:
-                visaoComputacional.processar_videos(video_faixas, video_objetos)
-
-            # Espere que os processos filhos terminem
             for i in range(1, comm.Get_size()):
                 comm.send(None, dest=i, tag=1)
-        else:
-            # Processos filhos
-            if rank == 1:
-                # Processo filho 1
-                configuracoes.inicializar_painel_de_controle()
+
+        elif rank == 1:
+            configuracoes.inicializar_painel_de_controle()
 
     else:
         video_faixas = 'assets/videos_teste/pista_completa.mp4'
@@ -153,6 +151,7 @@ def main():
 
         visaoComputacional = VisaoComputacional()
         visaoComputacional.processar_videos(video_faixas, video_objetos)
+        #visaoComputacional.configuracoes.inicializar_painel_de_controle()
 
 if __name__ == '__main__':
     main()
