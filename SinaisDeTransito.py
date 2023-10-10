@@ -25,7 +25,7 @@ class SinaisDeTransito:
         self.tempo_de_parada = 5
         self.intervalo_deteccao_placa_pare = self.tempo_de_parada + 20
 
-    def classificar_objetos(self, img, debug=False):
+    def classificar_objetos(self, img, debug=True):
         # Roda o modelo YOLOv8 treinado na imagem
         resultados = modelo_yolo(img, verbose=False)
 
@@ -85,6 +85,9 @@ class SinaisDeTransito:
                     x1, y1, x2, y2 = box.xyxy[0]  # Coordenadas do retângulo do semáforo detectado
                     semaforo_identificado = img[int(y1):int(y2), int(x1):int(x2)]  # Recorta a região do semáforo
 
+                    largura_semaforo = x2 - x1
+                    #print(largura_semaforo)
+
                     # Dividir a imagem em três partes, uma para cada luz
                     luzes_semaforo = np.array_split(semaforo_identificado, 3)
 
@@ -94,7 +97,9 @@ class SinaisDeTransito:
                     # Classificação da cor do semáforo -> luz acesa possui mais pixels
                     luz_acesa = np.argmax(luz_semaforo_qtd_pixels) # Retorna o índice do maior valor do array
                     cores = ['vermelho', 'amarelo', 'verde']
-                    self.semaforo = luz_acesa + 1
+
+                    if largura_semaforo > 30:
+                        self.semaforo = luz_acesa + 1
 
                     if debug:
                         print('\nStatus do semáforo:', self.semaforo, '|', 'Semáforo', cores[luz_acesa])
