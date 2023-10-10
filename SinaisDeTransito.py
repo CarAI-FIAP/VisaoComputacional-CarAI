@@ -21,7 +21,11 @@ class SinaisDeTransito:
         self.semaforo = 0
         self.placa_pare = 0
 
-    def classificar_objetos(self, img, debug=True):
+        self.tempo_placa_pare_detectada = None
+        self.tempo_de_parada = 5
+        self.intervalo_deteccao_placa_pare = self.tempo_de_parada + 20
+
+    def classificar_objetos(self, img, debug=False):
         # Roda o modelo YOLOv8 treinado na imagem
         resultados = modelo_yolo(img, verbose=False)
 
@@ -59,13 +63,23 @@ class SinaisDeTransito:
                     raio_placa = int((x2 - x1) / 2)
 
                     if debug:
-                        print('\nStatus da placa pare:', self.placa_pare)
-                        print('Pixels vermelhos na img (%):', porcentagem_vermelho)
-                        print('Raio da placa: ', raio_placa)
+                        print('\nStatus da placa pare:', self.placa_pare, ' | Raio: ', raio_placa, '| Pixels vermelhos na img (%):', porcentagem_vermelho)
 
                     # Verificar se a placa está próxima e de frente
                     if raio_placa >= 40 and porcentagem_vermelho > 25:
-                        self.placa_pare = 1
+                        if self.tempo_placa_pare_detectada is None:
+                            self.tempo_placa_pare_detectada = time.time()
+                            self.placa_pare = 1
+
+                        else:
+                            tempo_atual = time.time()
+                            tempo_decorrido = tempo_atual - self.tempo_placa_pare_detectada
+
+                            if tempo_decorrido >= self.tempo_de_parada:
+                                self.placa_pare = 0
+
+                                if tempo_decorrido >= self.intervalo_deteccao_placa_pare:
+                                    self.tempo_placa_pare_detectada = None
 
                 if label_identificado == 9:
                     x1, y1, x2, y2 = box.xyxy[0]  # Coordenadas do retângulo do semáforo detectado
@@ -83,16 +97,12 @@ class SinaisDeTransito:
                     self.semaforo = luz_acesa + 1
 
                     if debug:
-                        print('\nStatus do semáforo:', self.semaforo)
-                        print('Semáforo', cores[luz_acesa])
+                        print('\nStatus do semáforo:', self.semaforo, '|', 'Semáforo', cores[luz_acesa])
 
         img_com_resultados = resultados[0].plot()
 
-        if comunicacao_arduino:
-            dados = (self.semaforo, self.placa_pare)
-            print(dados)
-            self.enviar_dados_para_arduino(dados)
-
         cv2.imshow('YOLO', self.tratamento.redimensionar_imagem(img_com_resultados, 450))
+
+        return self.placa_pare, self.semaforo
 
 # © 2023 CarAI.

@@ -1,34 +1,68 @@
 import sys
 import cv2
 import math
+import os
 import matplotlib.pyplot as plt
-from mpi4py import MPI
+import multiprocessing
+import threading
 
+from PainelDeControle import *
 from TratamentoDeImagem import *
 from FaixasDeTransito import *
 from SinaisDeTransito import *
+
+comunicacao_arduino_on = True
+
+ativar_deteccao_faixas = True
+ativar_deteccao_objetos = True
+ativar_painel_de_controle = True
+
 
 class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
 
     def __init__(self):
-        #self.configuracoes = Configuracoes()
+        # self.configuracoes = Configuracoes()
 
-        self.camera_faixas_on = True
+        self.camera_faixas_on = False
         self.camera_sinalizacao_on = False
         self.video_largura = 1280
         self.video_altura = 720
 
         self.fator_reducao = 3
 
+        self.tipo_dado_esperado = 'A'
+
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito()
         self.sinalizacao = SinaisDeTransito()  # Comentar p/ diminuir a demora na inicialização
 
-    def processar_video_faixas(self, caminho_video=''):
-        if self.camera_faixas_on:
-            video = cv2.VideoCapture(1, cv2.CAP_DSHOW)
-  
+    def enviar_dados_para_arduino(self, dados_na_fila, debug=True):
+        port = 'COM4'  # 15
+        rate = 9600
+
+        serial_arduino = serial.Serial(port, rate, timeout=0.1)
+
+        while True:
+            if not dados_na_fila.empty():
+                dados = dados_na_fila.get()
+
+                serial_arduino.write(dados.encode())
+                time.sleep(0.01)
+
+                if debug:
+                    dados_recebidos = serial_arduino.readline().decode().strip()
+                    print(f'\n{dados_recebidos}', end='')
+
+                    sys.stdout.flush()
+
+    #def fechar_conexao_arduino(self):
+        #serial_arduino.close()
+
+    def configurar_captura_de_imagem(self, camera_on, caminho_camera, caminho_video=''):
+        if camera_on:
+            video = cv2.VideoCapture(caminho_camera, cv2.CAP_DSHOW)
+
             video.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_largura)
             video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_altura)
             video.set(cv2.CAP_PROP_FPS, 30)
@@ -38,101 +72,118 @@ class VisaoComputacional:
         else:
             video = cv2.VideoCapture(caminho_video)
 
-        while video.isOpened():
-            video_nao_acabou, frame = video.read()
+        return video
 
-            if video_nao_acabou:
-                #print(self.configuracoes.canal_l_min.get())
-                frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
-
-                self.faixas.identificar_faixas(frame_reduzido)
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                self.faixas.fechar_conexao()
-                break
-
-        video.release()
-        cv2.destroyAllWindows()
-
-    def processar_video_sinalizacoes(self, caminho_video=''):
-        if self.camera_sinalizacao_on:
-            video = cv2.VideoCapture(-0, cv2.CAP_DSHOW)
-
-            video.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_largura)
-            video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_altura)
-            video.set(cv2.CAP_PROP_FPS, 30)
-            video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-
-        else:
-            video = cv2.VideoCapture(caminho_video)
+    def processar_video_faixas(self, caminho_video='', dados_na_fila=None):
+        video = self.configurar_captura_de_imagem(self.camera_faixas_on, 1, caminho_video)
 
         while video.isOpened():
             video_nao_acabou, frame = video.read()
 
             if video_nao_acabou:
+                # print(self.configuracoes.canal_l_min.get())
                 frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
 
-                self.sinalizacao.classificar_objetos(frame_reduzido)
+                angulo, angulo_offset, offset, faixa_esquerda, faixa_direita = self.faixas.identificar_faixas(
+                    frame_reduzido)
+                valor_descartavel = 0
+
+                dados_faixas = f'A{angulo},{angulo_offset},{offset},{faixa_esquerda},{faixa_direita},{valor_descartavel}\n'
+
+                if comunicacao_arduino_on:
+                    if dados_na_fila:
+                        dados_na_fila.put(dados_faixas)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                self.faixas.fechar_conexao()
+                self.fechar_conexao_arduino()
                 break
 
         video.release()
         cv2.destroyAllWindows()
+
+    def processar_video_sinalizacoes(self, caminho_video='', dados_na_fila=None):
+        video = self.configurar_captura_de_imagem(self.camera_sinalizacao_on, -0, caminho_video)
+
+        while video.isOpened():
+            video_nao_acabou, frame = video.read()
+
+            if video_nao_acabou:
+                frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
+
+                placa_pare, semaforo = self.sinalizacao.classificar_objetos(frame_reduzido)
+
+                dados_sinalizacao = f'B{placa_pare},{semaforo}\n'
+
+                if comunicacao_arduino_on:
+                    if dados_na_fila:
+                        dados_na_fila.put(dados_sinalizacao)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.fechar_conexao_arduino()
+                break
+
+        video.release()
+        cv2.destroyAllWindows()
+
 
 def main():
-    processar_tudo = False
+    condicoes_de_processamento = [ativar_deteccao_faixas, ativar_deteccao_objetos, ativar_painel_de_controle]
+    processar_tudo = sum(condicoes_de_processamento) >= 2
+
+    visaoComputacional = VisaoComputacional()
+
+    dados_na_fila_de_envio_do_arduino = multiprocessing.Queue()
+
+    if comunicacao_arduino_on:
+        thread_enviar_dados_para_arduino = threading.Thread(
+            target=visaoComputacional.enviar_dados_para_arduino,
+            args=(dados_na_fila_de_envio_do_arduino,)
+        )
+        thread_enviar_dados_para_arduino.start()
 
     if processar_tudo:
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()  # ID ou classificação única dentro do comunicador
-
-        if rank == 0:
-            # Processo mestre
+        if ativar_deteccao_faixas:
             video_faixas = 'assets/videos_teste/pista_completa.mp4'
-            video_objetos = 'assets/videos_teste/semaforo_vermelho.mp4'
+            processo_video_faixas = multiprocessing.Process(
+                target=visaoComputacional.processar_video_faixas,
+                args=(video_faixas, dados_na_fila_de_envio_do_arduino,)
+            )
+            processo_video_faixas.start()
 
-            visaoComputacional = VisaoComputacional()
+        if ativar_deteccao_objetos:
+            video_objetos = 'assets/videos_teste/placa_pare1.mp4'
+            processo_video_sinalizacoes = multiprocessing.Process(
+                target=visaoComputacional.processar_video_sinalizacoes,
+                args=(video_objetos, dados_na_fila_de_envio_do_arduino,)
+            )
+            processo_video_sinalizacoes.start()
+            processo_video_sinalizacoes.join()
+            processo_video_sinalizacoes.terminate()
 
-            # Divida o trabalho entre os processos
-            comm.bcast(video_faixas, root=0)
-            comm.bcast(video_objetos, root=0)
+        if ativar_painel_de_controle:
+            painelDeControle = PainelDeControle()
 
-            # Inicialize o painel de controle em um processo separado
-            # if rank == 0:
-            # painelDeControle = PainelDeControle()
-            # painelDeControle.mainloop()
-
-            # Espere que os processos filhos terminem
-            for i in range(1, comm.Get_size()):
-                comm.send(None, dest=i, tag=1)
-        else:
-            # Processos filhos
-            video_faixas = comm.bcast(None, root=0)
-            video_objetos = comm.bcast(None, root=0)  # Receba o caminho do vídeo de objetos
-
-            if rank == 1:
-                # Processo filho 1: processar_video_sinalizacoes
-                visaoComputacional = VisaoComputacional()
-                visaoComputacional.processar_video_faixas(video_faixas)
-
-            # elif rank == 2:
-            # Processo filho 2: processar_video_faixas
-            #    visaoComputacional = VisaoComputacional()
-            #    visaoComputacional.processar_video_sinalizacoes(video_objetos)
+            processo_inicializar_painel_de_controle = multiprocessing.Process(
+                target=painelDeControle.mainloop()
+            )
+            processo_inicializar_painel_de_controle.start()
+            processo_inicializar_painel_de_controle.join()
 
     else:
-        video_faixas = 'assets/videos_teste/pista_completa.mp4'
-
-        video_objetos = 'assets/videos_teste/placa_pare1.mp4'
-
         visaoComputacional = VisaoComputacional()
-        visaoComputacional.processar_video_faixas(video_faixas)
-        # visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
-        # painelDeControle = PainelDeControle()
-        # painelDeControle.mainloop()
+        if ativar_deteccao_faixas:
+            video_faixas = 'assets/videos_teste/pista_completa.mp4'
+            visaoComputacional.processar_video_faixas(video_faixas)
+
+        elif ativar_deteccao_objetos:
+            video_objetos = 'assets/videos_teste/placa_pare1.mp4'
+            visaoComputacional.processar_video_sinalizacoes(video_objetos)
+
+        elif ativar_painel_de_controle:
+            painelDeControle = PainelDeControle()
+            painelDeControle.mainloop()
+
 
 if __name__ == '__main__':
     main()

@@ -1,23 +1,12 @@
+import sys
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from spicy import signal
 import math
-import serial
-import time
 
 from TratamentoDeImagem import *
 from TransformacaoDePerspectiva import *
-
-#configuracoes = Configuracoes()
-
-comunicacao_arduino = True
-
-port ='COM15' #15
-rate = 9600
-
-if comunicacao_arduino:
-   serial_arduino = serial.Serial(port, rate)
 
 class FaixasDeTransito:
     # Classe para classificar as faixas de trânsito.
@@ -27,7 +16,7 @@ class FaixasDeTransito:
         self.transformacao = TransformacaoDePerspectiva()
 
         self.fator_reducao = 3
-        self.birds_view = False
+        self.birds_view = True
 
         self.dist_max_entre_faixas_lista = []
         self.dist_max_entre_faixas = 212
@@ -38,23 +27,7 @@ class FaixasDeTransito:
         self.y_faixas = 0
         self.x_centro = 0
 
-    def fechar_conexao(self):
-        serial_arduino.close()
-
-    def enviar_dados_para_arduino(self, dados, debug=False):
-        angulo, esquerda_x, direita_x, offset, angulo_offset = dados
-        dados_enviar = f'{angulo_offset}\n'
-
-        print(dados_enviar)
-
-        serial_arduino.write(dados_enviar.encode())
-        time.sleep(0.01)
-
-        if debug:
-            dados_recebidos = serial_arduino.readline().decode().strip()
-            print(f'\n{dados_recebidos}', end='')
-
-    def identificar_faixas(self, img, debug=True, prints=True):
+    def identificar_faixas(self, img, debug=True, prints=False):
         global offset
 
         img_copia = np.copy(img)
@@ -90,7 +63,7 @@ class FaixasDeTransito:
                     self.angulo_padrao_lista.append(np.nanmin(angulos_sem_correcao))
 
         if len(angulos) == 2:
-            angulo = (angulos[0] + angulos[1]) / 2
+            angulo = (angulos[0] + angulos[1]) // 2
 
         elif (len(angulos) == 1):
             angulo = angulos[0]
@@ -121,22 +94,12 @@ class FaixasDeTransito:
         # with open('valores_offset.txt', 'a') as arquivo:
         # arquivo.write(f'{offset_esquerda} | {offset_direita} | {offset} | {angulo}\n')
 
-        dados = (angulo, faixa_esquerda, faixa_direita, offset, angulo_offset)
-        #(dados)
-
-        if comunicacao_arduino:
-            self.enviar_dados_para_arduino(dados)
-
         if debug:
             out_img = np.copy(img)
 
             if prints:
-                #print('\nOffset: ', offset)
-                #print('Ângulos: ', angulos)
-                #print('Ângulo ABP:', angulo)
-                print('\nÂngulo offset:', angulo_offset)
-                print('Esquerda (x): ', faixa_esquerda)
-                print('Direita (x): ', faixa_direita)
+                print('\nAngulo (faixas):', angulo, '|', 'Angulo (offset):', angulo_offset, '|', 'Offset:', offset, '|', 'Coordenadas (x):', (faixa_esquerda, faixa_direita))
+                sys.stdout.flush()
 
             tamanho_ponto = 12 // self.fator_reducao
 
@@ -180,6 +143,8 @@ class FaixasDeTransito:
         else:
             cv2.destroyAllWindows()
 
+        return angulo, angulo_offset, offset, faixa_esquerda, faixa_direita
+
     def calcular_resultados_faixas(self, img, coordenada_min_y, debug=False):
         self.y_faixas = coordenada_min_y
         self.y90 = coordenada_min_y + (120 // self.fator_reducao)
@@ -200,8 +165,7 @@ class FaixasDeTransito:
         x_esquerda_B, x_direita_B = self.calcular_picos_do_histograma(histograma_ponto_B)
 
         if debug:
-            print('Esquerda B (x):', x_esquerda_B)
-            print('Direita B (x):', x_direita_B)
+            print('Esquerda B (x):', x_esquerda_B, '|', 'Direita B (x):', x_direita_B)
 
         pontos = []
 
@@ -307,10 +271,7 @@ class FaixasDeTransito:
             dist_entre_faixas = (np.abs(ponto_direita) - np.abs(ponto_esquerda))
 
             if debug:
-                print('\nCP:', centro_pista)
-                print('offset:', offset)
-                print('XFD:', ponto_direita)
-                print('XFE:', ponto_esquerda)
+                print('CP:', centro_pista, '|', 'offset:', offset, '|', 'XFD:', ponto_direita, '|', 'XFE:', ponto_esquerda)
 
             return offset, angulo_offset, dist_entre_faixas, pontos_offset
 
@@ -326,12 +287,7 @@ class FaixasDeTransito:
             angulo_offset = self.calcular_angulo(pontos_offset)
 
             if debug:
-                print('\nCP:', centro_pista)
-                print('offset:', offset)
-                print('dist_max:', self.dist_max_entre_faixas)
-                print('CI:', posicao_carro)
-                print('XFD:', ponto_direita)
-                print('XFE:', ponto_esquerda)
+                print('CP:', centro_pista, '|', 'offset:', offset, '|', 'dist_max:', self.dist_max_entre_faixas, '|', 'CI:', posicao_carro, '|', 'XFD:', ponto_direita, '|', 'XFE:', ponto_esquerda)
 
             return offset, angulo_offset, pontos_offset
 
@@ -347,11 +303,7 @@ class FaixasDeTransito:
             angulo_offset = self.calcular_angulo(pontos_offset)
 
             if debug:
-                print('\nCP:', centro_pista)
-                print('offset:', offset)
-                print('CI:', posicao_carro)
-                print('XFD:', ponto_direita)
-                print('XFE:', ponto_esquerda)
+                print('CP:', centro_pista, '|', 'offset:', offset, '|', 'dist_max:', self.dist_max_entre_faixas, '|', 'CI:', posicao_carro, '|', 'XFD:', ponto_direita, '|', 'XFE:', ponto_esquerda)
 
             return offset, angulo_offset, pontos_offset
 
