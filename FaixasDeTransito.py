@@ -27,7 +27,7 @@ class FaixasDeTransito:
         self.y_faixas = 0
         self.x_centro = 0
 
-    def identificar_faixas(self, img, debug=True, prints=False):
+    def identificar_faixas(self, img, debug=True, prints=True):
         global offset
 
         img_copia = np.copy(img)
@@ -211,7 +211,7 @@ class FaixasDeTransito:
                     if x_esquerda != 0 and x_direita != 0:
                         angulos_sem_correcao.append(angulo_BAP)
 
-                    if not (self.birds_view):
+                    if not self.birds_view:
                         angulo_BAP -= self.angulo_padrao
                         angulo_BAP = abs(angulo_BAP)
 

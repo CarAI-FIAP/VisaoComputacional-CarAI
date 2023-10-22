@@ -11,12 +11,13 @@ from TratamentoDeImagem import *
 from FaixasDeTransito import *
 from SinaisDeTransito import *
 
-comunicacao_arduino_on = True
+comunicacao_arduino_on = False
 
 ativar_deteccao_faixas = True
 ativar_deteccao_objetos = True
-ativar_painel_de_controle = True
+ativar_painel_de_controle = False
 
+serial_arduino = None
 
 class VisaoComputacional:
     # Classe contendo a implementação de todos os algoritmos de visão computacional do veículo
@@ -24,24 +25,23 @@ class VisaoComputacional:
     def __init__(self):
         # self.configuracoes = Configuracoes()
 
-        self.camera_faixas_on = False
-        self.camera_sinalizacao_on = False
-        self.video_largura = 1280
-        self.video_altura = 720
+        self.camera_faixas_on = True
+        self.camera_sinalizacao_on = True
 
         self.fator_reducao = 3
-
-        self.tipo_dado_esperado = 'A'
 
         self.tratamento = TratamentoDeImagem()
         self.faixas = FaixasDeTransito()
         self.sinalizacao = SinaisDeTransito()  # Comentar p/ diminuir a demora na inicialização
 
     def enviar_dados_para_arduino(self, dados_na_fila, debug=True):
-        port = 'COM4'  # 15
-        rate = 9600
+        global serial_arduino
 
-        serial_arduino = serial.Serial(port, rate, timeout=0.1)
+        if serial_arduino is None:
+            port = 'COM4'  # 15
+            rate = 9600
+
+            serial_arduino = serial.Serial(port, rate, timeout=0.1)
 
         while True:
             if not dados_na_fila.empty():
@@ -54,19 +54,20 @@ class VisaoComputacional:
                     dados_recebidos = serial_arduino.readline().decode().strip()
                     print(f'\n{dados_recebidos}', end='')
 
-                    sys.stdout.flush()
+                    #sys.stdout.flush()
 
     #def fechar_conexao_arduino(self):
         #serial_arduino.close()
 
-    def configurar_captura_de_imagem(self, camera_on, caminho_camera, caminho_video=''):
+    def configurar_captura_de_imagem(self, camera_on, caminho_camera, caminho_video='', video_largura=1280, video_altura=720):
         if camera_on:
             video = cv2.VideoCapture(caminho_camera, cv2.CAP_DSHOW)
 
-            video.set(cv2.CAP_PROP_FRAME_WIDTH, self.video_largura)
-            video.set(cv2.CAP_PROP_FRAME_HEIGHT, self.video_altura)
+            video.set(cv2.CAP_PROP_FRAME_WIDTH, video_largura)
+            video.set(cv2.CAP_PROP_FRAME_HEIGHT, video_altura)
             video.set(cv2.CAP_PROP_FPS, 30)
             video.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+            video.set(cv2.CAP_PROP_BUFFERSIZE, 3)
             video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
         else:
@@ -111,8 +112,10 @@ class VisaoComputacional:
                 frame_reduzido = self.tratamento.redimensionar_por_fator(frame, self.fator_reducao)
 
                 placa_pare, semaforo = self.sinalizacao.classificar_objetos(frame_reduzido)
+                valor_descartavel = 0
 
-                dados_sinalizacao = f'B{placa_pare},{semaforo}\n'
+                dados_sinalizacao = f'B{valor_descartavel}{placa_pare},{semaforo}\n'
+                #print(dados_sinalizacao)
 
                 if comunicacao_arduino_on:
                     if dados_na_fila:
@@ -151,7 +154,7 @@ def main():
             processo_video_faixas.start()
 
         if ativar_deteccao_objetos:
-            video_objetos = 'assets/videos_teste/placa_pare1.mp4'
+            video_objetos = 'assets/videos_teste/semaforo.mp4'
             processo_video_sinalizacoes = multiprocessing.Process(
                 target=visaoComputacional.processar_video_sinalizacoes,
                 args=(video_objetos, dados_na_fila_de_envio_do_arduino,)
@@ -177,7 +180,7 @@ def main():
             visaoComputacional.processar_video_faixas(video_faixas)
 
         elif ativar_deteccao_objetos:
-            video_objetos = 'assets/videos_teste/placa_pare1.mp4'
+            video_objetos = 'assets/videos_teste/semaforo.mp4'
             visaoComputacional.processar_video_sinalizacoes(video_objetos)
 
         elif ativar_painel_de_controle:

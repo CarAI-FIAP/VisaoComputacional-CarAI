@@ -22,12 +22,12 @@ class SinaisDeTransito:
         self.placa_pare = 0
 
         self.tempo_placa_pare_detectada = None
-        self.tempo_de_parada = 5
+        self.tempo_de_parada = 8
         self.intervalo_deteccao_placa_pare = self.tempo_de_parada + 20
 
     def classificar_objetos(self, img, debug=True):
         # Roda o modelo YOLOv8 treinado na imagem
-        resultados = modelo_yolo(img, verbose=False)
+        resultados = modelo_yolo(img, verbose=False, classes=[9, 11])
 
         for resultado in resultados:
             boxes = resultado.boxes.cpu().numpy()
@@ -66,7 +66,7 @@ class SinaisDeTransito:
                         print('\nStatus da placa pare:', self.placa_pare, ' | Raio: ', raio_placa, '| Pixels vermelhos na img (%):', porcentagem_vermelho)
 
                     # Verificar se a placa está próxima e de frente
-                    if raio_placa >= 40 and porcentagem_vermelho > 25:
+                    if raio_placa >= 25 and porcentagem_vermelho > 25:
                         if self.tempo_placa_pare_detectada is None:
                             self.tempo_placa_pare_detectada = time.time()
                             self.placa_pare = 1
@@ -80,6 +80,9 @@ class SinaisDeTransito:
 
                                 if tempo_decorrido >= self.intervalo_deteccao_placa_pare:
                                     self.tempo_placa_pare_detectada = None
+
+                    else:
+                        self.placa_pare = 0
 
                 if label_identificado == 9:
                     x1, y1, x2, y2 = box.xyxy[0]  # Coordenadas do retângulo do semáforo detectado
@@ -98,8 +101,10 @@ class SinaisDeTransito:
                     luz_acesa = np.argmax(luz_semaforo_qtd_pixels) # Retorna o índice do maior valor do array
                     cores = ['vermelho', 'amarelo', 'verde']
 
-                    if largura_semaforo > 30:
+                    if largura_semaforo > 25:
                         self.semaforo = luz_acesa + 1
+                    else:
+                        self.semaforo = 0
 
                     if debug:
                         print('\nStatus do semáforo:', self.semaforo, '|', 'Semáforo', cores[luz_acesa])
