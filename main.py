@@ -11,7 +11,7 @@ from TratamentoDeImagem import *
 from FaixasDeTransito import *
 from SinaisDeTransito import *
 
-comunicacao_arduino_on = False
+comunicacao_arduino_on = True
 
 ativar_deteccao_faixas = True
 ativar_deteccao_objetos = True
@@ -38,7 +38,7 @@ class VisaoComputacional:
         global serial_arduino
 
         if serial_arduino is None:
-            port = 'COM4'  # 15
+            port = 'COM7'  # 7
             rate = 9600
 
             serial_arduino = serial.Serial(port, rate, timeout=0.1)
@@ -76,7 +76,7 @@ class VisaoComputacional:
         return video
 
     def processar_video_faixas(self, caminho_video='', dados_na_fila=None):
-        video = self.configurar_captura_de_imagem(self.camera_faixas_on, 1, caminho_video)
+        video = self.configurar_captura_de_imagem(self.camera_faixas_on, 3, caminho_video)
 
         while video.isOpened():
             video_nao_acabou, frame = video.read()
@@ -103,7 +103,7 @@ class VisaoComputacional:
         cv2.destroyAllWindows()
 
     def processar_video_sinalizacoes(self, caminho_video='', dados_na_fila=None):
-        video = self.configurar_captura_de_imagem(self.camera_sinalizacao_on, -0, caminho_video)
+        video = self.configurar_captura_de_imagem(self.camera_sinalizacao_on, 1, caminho_video)
 
         while video.isOpened():
             video_nao_acabou, frame = video.read()

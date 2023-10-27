@@ -3,6 +3,8 @@ import numpy as np
 
 from Configuracoes import *
 
+dark_mode = False
+
 class TratamentoDeImagem:
     # Classe para reunir todos os métodos de tratamento de imagem.
 
@@ -87,19 +89,38 @@ class TratamentoDeImagem:
         canal_l = hls[:,:,1]
         canal_s = hls[:,:,2]
         canal_v = hsv[:,:,2]
+        canal_b = bgr[:,:,0]
+        canal_g = bgr[:,:,1]
         canal_r = bgr[:,:,2]
 
-        faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0) # 0.78
-        #faixa_direita = cv2.threshold(canal_l, (120, 255), cv2.THRESH_BINARY)
-        #faixa_direita = cv2.GaussianBlur(faixa_direita, (3, 3))
-        #faixa_direita &= self.threshold_absoluto(canal_s, 50, 255) # 40
-        #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
-        #faixa_direita[:,:750] = 0
+        if dark_mode:
+            faixa_direita = self.threshold_relativo(canal_l, 0.4, 1.0) # 0.78
+            #faixa_direita = cv2.threshold(canal_l, (120, 255), cv2.THRESH_BINARY)
+            #faixa_direita = cv2.GaussianBlur(faixa_direita, (3, 3))
+            faixa_direita &= self.threshold_absoluto(canal_s, 70, 255) # 40
+            faixa_direita &= self.threshold_absoluto(canal_s, 70, 255) # 40
+            #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
+            #faixa_direita[:,:750] = 0
 
-        faixa_esquerda = self.threshold_absoluto(canal_h, 20, 30)
-        #faixa_esquerda &= self.threshold_absoluto(canal_s, 30, 255)
-        faixa_esquerda &= self.threshold_relativo(canal_v, 0.95, 1.0)
-        #faixa_esquerda[:,550:] = 0
+            faixa_esquerda = self.threshold_absoluto(canal_h, 15, 30)
+            faixa_esquerda = self.threshold_relativo(canal_g, 0.2, 1.0)
+            faixa_esquerda = self.threshold_relativo(canal_r, 0.1, 1.0)
+            #faixa_esquerda &= self.threshold_absoluto(canal_s, 30, 255)
+            faixa_esquerda &= self.threshold_relativo(canal_v, 0.7, 1.0)
+            #faixa_esquerda[:,550:] = 0
+
+        else:
+            faixa_direita = self.threshold_relativo(canal_l, 0.85, 1.0) # 0.78
+            #faixa_direita = cv2.threshold(canal_l, (120, 255), cv2.THRESH_BINARY)
+            #faixa_direita = cv2.GaussianBlur(faixa_direita, (3, 3))
+            #faixa_direita &= self.threshold_absoluto(canal_s, 50, 255) # 40
+            #faixa_direita &= self.threshold_relativo(canal_v, 0.85, 1.0)
+            #faixa_direita[:,:750] = 0
+
+            faixa_esquerda = self.threshold_absoluto(canal_h, 20, 30)
+            #faixa_esquerda &= self.threshold_absoluto(canal_s, 30, 255)
+            faixa_esquerda &= self.threshold_relativo(canal_v, 0.95, 1.0)
+            #faixa_esquerda[:,550:] = 0
 
         img_binarizada = faixa_esquerda | faixa_direita
 

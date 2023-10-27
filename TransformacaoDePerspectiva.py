@@ -11,7 +11,7 @@ class TransformacaoDePerspectiva:
         self.fator_reducao = 3
 
         # Definição dos valores fixos para os deslocamentos e coordenadas dos pontos de origem
-        self.xfd = (450 // self.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
+        self.xfd = (550 // self.fator_reducao)   # Deslocamento horizontal em relação ao centro da imagem
         self.yf = (450 // self.fator_reducao)     # Posição vertical dos pontos de origem
         self.offset_x = 0                                  # Deslocamento horizontal dos pontos de origem em relação às bordas da imagem
 

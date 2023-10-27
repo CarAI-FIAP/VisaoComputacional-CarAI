@@ -22,7 +22,7 @@ class SinaisDeTransito:
         self.placa_pare = 0
 
         self.tempo_placa_pare_detectada = None
-        self.tempo_de_parada = 8
+        self.tempo_de_parada = 5
         self.intervalo_deteccao_placa_pare = self.tempo_de_parada + 20
 
     def classificar_objetos(self, img, debug=True):

@@ -27,7 +27,7 @@ class FaixasDeTransito:
         self.y_faixas = 0
         self.x_centro = 0
 
-    def identificar_faixas(self, img, debug=True, prints=True):
+    def identificar_faixas(self, img, debug=True, prints=False):
         global offset
 
         img_copia = np.copy(img)
